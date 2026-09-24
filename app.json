@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "appbllesan01",
+    "name": "بڵەسەن",
     "slug": "blesanapp01",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.appblesan.bllasan"
+      "package": "com.appblesan.bllasan",
+      "icon": "./assets/icon.png"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,6 +35,7 @@
     },
     "plugins": [
       "expo-asset"
-    ]
+    ],
+    "icon": "./assets/icon.png"
   }
 }
