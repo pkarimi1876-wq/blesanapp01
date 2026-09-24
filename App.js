@@ -18,11 +18,9 @@ import {
 } from "lucide-react-native";
 import {
   SafeAreaProvider,
+  SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-
-import { COLORS } from "./constants/theme";
-
 // Main screens
 import WelcomeScreen from "./screens/WelcomeScreen";
 import UserLoginScreen from "./screens/UserLoginScreen";
@@ -190,7 +188,17 @@ function RootStack() {
         component={GalleryScreen}
         options={{ headerShown: false }}
       />
-
+<Stack.Screen
+  name="Memorial"
+  options={{ headerShown: false }}
+>
+  {(props) => (
+    <MemorialScreen
+      {...props}
+      isAdmin={false}
+    />
+  )}
+</Stack.Screen>
       {/* =========================
           ADMIN LOGIN / PANEL
       ========================== */}
@@ -380,9 +388,11 @@ export default function App() {
         backgroundColor={COLORS.background}
       />
 
-      <NavigationContainer>
-        <RootStack />
-      </NavigationContainer>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <NavigationContainer>
+          <RootStack />
+        </NavigationContainer>
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }

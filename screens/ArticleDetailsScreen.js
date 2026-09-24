@@ -15,6 +15,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -226,10 +228,16 @@ useEffect(() => {
         </Text>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
+      <KeyboardAvoidingView
+  style={{ flex: 1 }}
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  keyboardVerticalOffset={0}
+>
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={styles.content}
+    keyboardShouldPersistTaps="handled"
+  >
         {/* ARTICLE HEADER */}
 
         <View style={styles.articleHeader}>
@@ -496,8 +504,9 @@ useEffect(() => {
             ))
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+       </ScrollView>
+</KeyboardAvoidingView>
+</SafeAreaView>
   );
 }
 
