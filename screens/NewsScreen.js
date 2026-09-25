@@ -938,7 +938,7 @@ export default function NewsScreen({
     {item.comments_count || 0}
   </Text>
 </TouchableOpacity>
-                      )}
+                      
 
                       <View
                         style={

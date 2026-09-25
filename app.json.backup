@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "appbllesan01",
+    "slug": "snack-b594c5af-a88d-42a0-b381-f3b40960b27c",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.appblesan.bllasan"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "description": "ئەپی فەرمی  بڵەسەن",
+    "extra": {
+      "eas": {
+        "projectId": "60e3b538-0071-42d3-b590-56baf99a1409"
+      }
+    },
+    "owner": "appblesan"
+  }
+}

@@ -1,3 +1,4 @@
+
 import React, { useCallback, useState } from "react";
 
 import {
@@ -10,7 +11,6 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from "react-native";
 
 import {
@@ -29,6 +29,7 @@ export default function HomeScreen({ navigation }) {
   // =====================================================
   // Quick News State
   // =====================================================
+
   const [quickNews, setQuickNews] = useState(null);
   const [loadingQuickNews, setLoadingQuickNews] =
     useState(true);
@@ -37,6 +38,7 @@ export default function HomeScreen({ navigation }) {
   // =====================================================
   // Fetch Quick News From Supabase
   // =====================================================
+
   const fetchQuickNews = async () => {
     try {
       setLoadingQuickNews(true);
@@ -70,6 +72,7 @@ export default function HomeScreen({ navigation }) {
   // =====================================================
   // Dynamic Quick News Theme
   // =====================================================
+
   const getQuickNewsStyles = () => {
     const type = quickNews?.news_type;
 
@@ -104,6 +107,7 @@ export default function HomeScreen({ navigation }) {
   // =====================================================
   // Focus & Refresh
   // =====================================================
+
   useFocusEffect(
     useCallback(() => {
       fetchQuickNews();
@@ -119,6 +123,7 @@ export default function HomeScreen({ navigation }) {
   // =====================================================
   // Navigation Handler
   // =====================================================
+
   const navigateTo = (screenName) => {
     const rootNavigation =
       navigation.getParent("root") ||
@@ -132,14 +137,23 @@ export default function HomeScreen({ navigation }) {
   };
 
   // =====================================================
+  // Weather Navigation
+  // =====================================================
+
+  const openWeather = () => {
+    navigateTo("Weather");
+  };
+
+  // =====================================================
   // Render
   // =====================================================
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 20,
+          paddingBottom: 30,
         }}
         refreshControl={
           <RefreshControl
@@ -152,6 +166,7 @@ export default function HomeScreen({ navigation }) {
         {/* =====================================================
             Header
         ===================================================== */}
+
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.profileBtn}
@@ -159,7 +174,8 @@ export default function HomeScreen({ navigation }) {
           >
             <Image
               source={{
-                uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200",
+                uri:
+                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200",
               }}
               style={styles.profileImg}
             />
@@ -197,6 +213,7 @@ export default function HomeScreen({ navigation }) {
         {/* =====================================================
             Quick News Section
         ===================================================== */}
+
         {loadingQuickNews ? (
           <View
             style={[
@@ -362,11 +379,15 @@ export default function HomeScreen({ navigation }) {
         {/* =====================================================
             Quick Access Buttons
         ===================================================== */}
+
         <View style={styles.quickAccessRow}>
           {/* شەجەرەنامە */}
+
           <TouchableOpacity
             style={styles.quickCard}
-           onPress={() => navigation.navigate("Tree")}
+            onPress={() =>
+              navigation.navigate("Tree")
+            }
             activeOpacity={0.8}
           >
             <FontAwesome5
@@ -381,9 +402,12 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* نووسەرانی بڵەسەن */}
+
           <TouchableOpacity
             style={styles.quickCard}
-            onPress={() => navigation.navigate("Writers")}
+            onPress={() =>
+              navigation.navigate("Writers")
+            }
             activeOpacity={0.8}
           >
             <FontAwesome5
@@ -398,9 +422,12 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* وێنەخانە */}
+
           <TouchableOpacity
             style={styles.quickCard}
-            onPress={() => navigateTo("Gallery")}
+            onPress={() =>
+              navigateTo("Gallery")
+            }
             activeOpacity={0.8}
           >
             <Ionicons
@@ -415,28 +442,32 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* ژمارە تەلەفۆنەکان */}
-          <TouchableOpacity
-  style={styles.quickCard}
-  onPress={() =>
-    navigation.navigate("Contact")
-  }
-  activeOpacity={0.8}
->
-  <Ionicons
-    name="call"
-    size={22}
-    color="#f59e0b"
-  />
 
-  <Text style={styles.quickCardText}>
-    ژمارە تەلەفۆنەکان
-  </Text>
-</TouchableOpacity>
-
-          {/* پرسە و سەرەخۆشی */}
           <TouchableOpacity
             style={styles.quickCard}
-           onPress={() => navigation.navigate("Memorial")}
+            onPress={() =>
+              navigation.navigate("Contact")
+            }
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="call"
+              size={22}
+              color="#f59e0b"
+            />
+
+            <Text style={styles.quickCardText}>
+              ژمارە تەلەفۆنەکان
+            </Text>
+          </TouchableOpacity>
+
+          {/* پرسە و سەرەخۆشی */}
+
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() =>
+              navigation.navigate("Memorial")
+            }
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons
@@ -451,9 +482,12 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* دهیاری */}
+
           <TouchableOpacity
             style={styles.quickCard}
-            onPress={() => navigateTo("Municipality")}
+            onPress={() =>
+              navigateTo("Municipality")
+            }
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons
@@ -471,7 +505,47 @@ export default function HomeScreen({ navigation }) {
         {/* =====================================================
             Advertisement
         ===================================================== */}
-               <AdBanner navigation={navigation} />
+
+        <AdBanner navigation={navigation} />
+
+        {/* =====================================================
+            Weather Card - کادری سەربەخۆ
+        ===================================================== */}
+
+        <TouchableOpacity
+          style={styles.weatherCard}
+          onPress={openWeather}
+          activeOpacity={0.85}
+        >
+          <View style={styles.weatherIconBox}>
+            <MaterialCommunityIcons
+              name="weather-partly-cloudy"
+              size={38}
+              color="#f59e0b"
+            />
+          </View>
+
+          <View style={styles.weatherContent}>
+            <Text style={styles.weatherTitle}>
+              کەشناسی بڵەسەن
+            </Text>
+
+            <Text style={styles.weatherSubtitle}>
+              ابوالحسن، بانە، کوردستان
+            </Text>
+
+            <Text style={styles.weatherMore}>
+              بینینی کەشناسی و پێشبینی ٧ ڕۆژ
+            </Text>
+          </View>
+
+          <Ionicons
+            name="chevron-back"
+            size={22}
+            color="#f59e0b"
+          />
+        </TouchableOpacity>
+        
       </ScrollView>
     </SafeAreaView>
   );
@@ -486,6 +560,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0b1329",
   },
+
+  // =====================================================
+  // Header
+  // =====================================================
 
   header: {
     flexDirection: "row",
@@ -549,6 +627,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
+  // =====================================================
+  // Quick News
+  // =====================================================
+
   alertCard: {
     marginHorizontal: 16,
     borderRadius: 16,
@@ -600,6 +682,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
+  // =====================================================
+  // Quick Access
+  // =====================================================
+
   quickAccessRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -628,4 +714,59 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "bold",
   },
+
+  // =====================================================
+  // Weather Card
+  // =====================================================
+
+  weatherCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 20,
+    backgroundColor: "#172554",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#1e3a8a",
+    minHeight: 92,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    padding: 14,
+  },
+
+  weatherIconBox: {
+    width: 62,
+    height: 62,
+    borderRadius: 14,
+    backgroundColor: "#0f1b3a",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+
+  weatherContent: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+
+  weatherTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "right",
+  },
+
+  weatherSubtitle: {
+    color: "#94a3b8",
+    fontSize: 10,
+    marginTop: 4,
+    textAlign: "right",
+  },
+
+  weatherMore: {
+    color: "#f59e0b",
+    fontSize: 10,
+    marginTop: 7,
+    textAlign: "right",
+  },
 });
+

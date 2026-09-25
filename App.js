@@ -54,6 +54,8 @@ import EditArticleScreen from "./screens/EditArticleScreen";
 import ChangePasswordScreen from "./screens/ChangePasswordScreen";
 import BllasanAboutScreen from "./screens/BllasanAboutScreen";
 import ManageQuickNewsScreen from "./screens/ManageQuickNewsScreen";
+import WeatherScreen from "./screens/WeatherScreen";
+import AiScreen from "./screens/AiScreen";
 // Municipality
 import MunicipalitySectionScreen from "./screens/MunicipalitySectionScreen";
 
@@ -62,6 +64,14 @@ import LoginAdminPanelScreen from "./screens/LoginAdmnPanelScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const COLORS = {
+  background: "#0B1F33",
+  tabBarBg: "#0B1F33",
+  cardBorder: "#D4A017",
+  primary: "#D4A017",
+  textSub: "#AAB4BE",
+};
+
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
@@ -146,6 +156,7 @@ function MainTabs() {
 function RootStack() {
   return (
     <Stack.Navigator
+      id="root"
       initialRouteName="Welcome"
       screenOptions={{
         headerShown: false,
@@ -346,6 +357,12 @@ function RootStack() {
   name="ManageQuickNews"
   component={ManageQuickNewsScreen}
 />
+<Stack.Screen
+  name="Weather"
+  component={WeatherScreen}
+  options={{ headerShown: false }}
+/>
+
 <Stack.Screen
   name="ManageAds"
   component={ManageAdsScreen}
