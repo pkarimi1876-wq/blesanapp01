@@ -1,5 +1,5 @@
-import React from "react";
-import { StatusBar } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StatusBar, View } from "react-native";
 import {
   NavigationContainer,
 } from "@react-navigation/native";
@@ -14,13 +14,15 @@ import {
   GitFork,
   PenTool,
   Newspaper,
-  Flame,
 } from "lucide-react-native";
 import {
   SafeAreaProvider,
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+
+import { supabase } from "./lib/supabase";
+
 // Main screens
 import WelcomeScreen from "./screens/WelcomeScreen";
 import UserLoginScreen from "./screens/UserLoginScreen";
@@ -34,6 +36,7 @@ import ContactScreen from "./screens/ContactScreen";
 import GalleryScreen from "./screens/GalleryScreen";
 import MunicipalityScreen from "./screens/MunicipalityScreen";
 import AdContactScreen from "./screens/AdContactScreen";
+
 // Admin screens
 import AdminPanelScreen from "./screens/AdminPanelScreen";
 import AdminManagementScreen from "./screens/AdminManagementScreen";
@@ -43,6 +46,7 @@ import ManageNewsScreen from "./screens/ManageNewsScreen";
 import ManageGalleryScreen from "./screens/ManageGalleryScreen";
 import ManageAdsScreen from "./screens/ManageAdScreen";
 import ManageBllasanAboutScreen from "./screens/ManageBllasanAboutScreen";
+
 // Writer / article screens
 import AuthScreen from "./screens/AuthorsScreen";
 import WriterProfileScreen from "./screens/WriterProfileScreen";
@@ -56,6 +60,7 @@ import BllasanAboutScreen from "./screens/BllasanAboutScreen";
 import ManageQuickNewsScreen from "./screens/ManageQuickNewsScreen";
 import WeatherScreen from "./screens/WeatherScreen";
 import AiScreen from "./screens/AiScreen";
+
 // Municipality
 import MunicipalitySectionScreen from "./screens/MunicipalitySectionScreen";
 
@@ -64,6 +69,7 @@ import LoginAdminPanelScreen from "./screens/LoginAdmnPanelScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
 const COLORS = {
   background: "#0B1F33",
   tabBarBg: "#0B1F33",
@@ -71,7 +77,6 @@ const COLORS = {
   primary: "#D4A017",
   textSub: "#AAB4BE",
 };
-
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
@@ -132,56 +137,54 @@ function MainTabs() {
         name="News"
         component={NewsScreen}
         options={{
-          tabBarLabel: "هەواڵ",
+  tabBarLabel: "هەواڵ",
+  tabBarIcon: ({ color, size }) => (
+    <Newspaper color={color} size={size} />
+  ),
+}}
+/>
+
+      <Tab.Screen
+        name="BllasanAbout"
+        component={BllasanAboutScreen}
+        options={{
+          tabBarLabel: "بڵەسەن",
           tabBarIcon: ({ color, size }) => (
-            <Newspaper color={color} size={size} />
+            <Home color={color} size={size} />
           ),
         }}
       />
-
-      <Tab.Screen
-  name="BllasanAbout"
-  component={BllasanAboutScreen}
-  options={{
-    tabBarLabel: "بڵەسەن",
-    tabBarIcon: ({ color, size }) => (
-      <Home color={color} size={size} />
-    ),
-  }}
-/>
     </Tab.Navigator>
   );
 }
 
-function RootStack() {
+function RootStack({ isLoggedIn }) {
   return (
     <Stack.Navigator
       id="root"
-      initialRouteName="Welcome"
+      initialRouteName={isLoggedIn ? "MainTabs" : "Welcome"}
       screenOptions={{
         headerShown: false,
       }}
     >
-      {/* =========================
-          MAIN
-      ========================== */}
-
       <Stack.Screen
         name="Welcome"
         component={WelcomeScreen}
         options={{ headerShown: false }}
       />
-<Stack.Screen
-  name="UserLogin"
-  component={UserLoginScreen}
-  options={{ headerShown: false }}
-/>
 
-<Stack.Screen
-  name="UserSignUp"
-  component={UserSignUpScreen}
-  options={{ headerShown: false }}
-/>
+      <Stack.Screen
+        name="UserLogin"
+        component={UserLoginScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="UserSignUp"
+        component={UserSignUpScreen}
+        options={{ headerShown: false }}
+      />
+
       <Stack.Screen
         name="MainTabs"
         component={MainTabs}
@@ -199,20 +202,10 @@ function RootStack() {
         component={GalleryScreen}
         options={{ headerShown: false }}
       />
-<Stack.Screen
-  name="Memorial"
-  options={{ headerShown: false }}
->
-  {(props) => (
-    <MemorialScreen
-      {...props}
-      isAdmin={false}
-    />
-  )}
-</Stack.Screen>
-      {/* =========================
-          ADMIN LOGIN / PANEL
-      ========================== */}
+
+      <Stack.Screen name="Memorial" options={{ headerShown: false }}>
+        {(props) => <MemorialScreen {...props} isAdmin={false} />}
+      </Stack.Screen>
 
       <Stack.Screen
         name="AdminPanel"
@@ -231,10 +224,6 @@ function RootStack() {
         component={AdminManagementScreen}
         options={{ headerShown: false }}
       />
-
-      {/* =========================
-          ADMIN MANAGEMENT
-      ========================== */}
 
       <Stack.Screen
         name="ManageTree"
@@ -266,45 +255,19 @@ function RootStack() {
         options={{ headerShown: false }}
       />
 
-      <Stack.Screen
-        name="ManageObituaries"
-        options={{ headerShown: false }}
-      >
-        {(props) => (
-          <MemorialScreen
-            {...props}
-            isAdmin={true}
-          />
-        )}
+      <Stack.Screen name="ManageObituaries" options={{ headerShown: false }}>
+        {(props) => <MemorialScreen {...props} isAdmin={true} />}
       </Stack.Screen>
 
-      <Stack.Screen
-        name="ManageDirectory"
-        options={{ headerShown: false }}
-      >
-        {(props) => (
-          <ContactScreen
-            {...props}
-            isAdmin={true}
-          />
-        )}
+      <Stack.Screen name="ManageDirectory" options={{ headerShown: false }}>
+        {(props) => <ContactScreen {...props} isAdmin={true} />}
       </Stack.Screen>
 
-      <Stack.Screen
-        name="AdminMunicipality"
-        options={{ headerShown: false }}
-      >
+      <Stack.Screen name="AdminMunicipality" options={{ headerShown: false }}>
         {(props) => (
-          <MunicipalityScreen
-            {...props}
-            isAdmin={true}
-          />
+          <MunicipalityScreen {...props} isAdmin={true} />
         )}
       </Stack.Screen>
-
-      {/* =========================
-          WRITERS / ARTICLES
-      ========================== */}
 
       <Stack.Screen
         name="AuthScreen"
@@ -353,40 +316,41 @@ function RootStack() {
         component={ChangePasswordScreen}
         options={{ headerShown: false }}
       />
-<Stack.Screen
-  name="ManageQuickNews"
-  component={ManageQuickNewsScreen}
-/>
-<Stack.Screen
-  name="Weather"
-  component={WeatherScreen}
-  options={{ headerShown: false }}
-/>
 
-<Stack.Screen
-  name="ManageAds"
-  component={ManageAdsScreen}
-  options={{ headerShown: false }}
-/>
-      {/* =========================
-          MUNICIPALITY
-      ========================== */}
+      <Stack.Screen
+        name="ManageQuickNews"
+        component={ManageQuickNewsScreen}
+      />
+
+      <Stack.Screen
+        name="Weather"
+        component={WeatherScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ManageAds"
+        component={ManageAdsScreen}
+        options={{ headerShown: false }}
+      />
 
       <Stack.Screen
         name="Municipality"
         component={MunicipalityScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
-  name="AdContact"
-  component={AdContactScreen}
-  options={{ headerShown: false }}
-/>
-<Stack.Screen
-  name="ManageBllasanAbout"
-  component={ManageBllasanAboutScreen}
-  options={{ headerShown: false }}
-/>
+        name="AdContact"
+        component={AdContactScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ManageBllasanAbout"
+        component={ManageBllasanAboutScreen}
+        options={{ headerShown: false }}
+      />
 
       <Stack.Screen
         name="MunicipalitySection"
@@ -397,7 +361,73 @@ function RootStack() {
   );
 }
 
+function LoadingScreen() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: COLORS.background,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <ActivityIndicator
+        size="large"
+        color={COLORS.primary}
+      />
+    </View>
+  );
+}
+
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    // 1. Check saved Supabase session when app starts
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
+        setLoading(false);
+      }
+    });
+
+    // 2. Listen for login / logout / session changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (mounted) {
+          setSession(session);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={COLORS.background}
+        />
+        <SafeAreaView
+          style={{ flex: 1 }}
+          edges={["top"]}
+        >
+          <LoadingScreen />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar
@@ -405,9 +435,15 @@ export default function App() {
         backgroundColor={COLORS.background}
       />
 
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView
+        style={{ flex: 1 }}
+        edges={["top"]}
+      >
         <NavigationContainer>
-          <RootStack />
+          <RootStack
+            key={session ? "logged-in" : "logged-out"}
+            isLoggedIn={!!session}
+          />
         </NavigationContainer>
       </SafeAreaView>
     </SafeAreaProvider>
