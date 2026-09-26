@@ -64,6 +64,50 @@ export default function WelcomeScreen({
   const [loading, setLoading] = useState(false);
 
   // =====================================================
+  // Email Confirmation / Resend
+  // =====================================================
+
+  const [pendingConfirmation, setPendingConfirmation] =
+    useState(false);
+
+  const [confirmationEmail, setConfirmationEmail] =
+    useState('');
+
+  const [resendLoading, setResendLoading] =
+    useState(false);
+
+  const [resendCooldown, setResendCooldown] =
+    useState(0);
+
+  const [resendMessage, setResendMessage] =
+    useState('');
+
+  // =====================================================
+  // Resend Countdown
+  // =====================================================
+
+  useEffect(() => {
+    if (resendCooldown <= 0) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setResendCooldown((current) => {
+        if (current <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [resendCooldown]);
+
+  // =====================================================
   // Deep Link / Email Confirmation
   // =====================================================
 
@@ -102,6 +146,10 @@ export default function WelcomeScreen({
             'EMAIL CONFIRMATION SUCCESS'
           );
 
+          setPendingConfirmation(false);
+          setResendCooldown(0);
+          setResendMessage('');
+
           if (onLoginSuccess) {
             onLoginSuccess();
           }
@@ -138,6 +186,7 @@ export default function WelcomeScreen({
               await supabase.auth.setSession({
                 access_token:
                   accessToken,
+
                 refresh_token:
                   refreshToken,
               });
@@ -149,6 +198,10 @@ export default function WelcomeScreen({
             console.log(
               'EMAIL CONFIRMATION SUCCESS'
             );
+
+            setPendingConfirmation(false);
+            setResendCooldown(0);
+            setResendMessage('');
 
             if (onLoginSuccess) {
               onLoginSuccess();
@@ -193,6 +246,111 @@ export default function WelcomeScreen({
       subscription.remove();
     };
   }, [onLoginSuccess]);
+
+  // =====================================================
+  // Resend Confirmation Email
+  // =====================================================
+
+  const handleResendConfirmation = async () => {
+    if (!confirmationEmail) {
+      Alert.alert(
+        'ئاگاداری',
+        'ئیمەیلی پشتڕاستکردنەوە نییە.'
+      );
+
+      return;
+    }
+
+    if (resendLoading) {
+      return;
+    }
+
+    if (resendCooldown > 0) {
+      return;
+    }
+
+    setResendLoading(true);
+    setResendMessage('');
+
+    try {
+      console.log(
+        'RESEND EMAIL:',
+        confirmationEmail
+      );
+
+      const { error } =
+        await supabase.auth.resend({
+          type: 'signup',
+
+          email:
+            confirmationEmail,
+
+          options: {
+            emailRedirectTo:
+              redirectTo,
+          },
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log(
+        'CONFIRMATION EMAIL RESENT'
+      );
+
+      // دووبارە 60 چرکە چاوەڕوانی
+      setResendCooldown(60);
+
+      setResendMessage(
+        'ئیمەیڵی نوێی پشتڕاستکردنەوە نێردرا. تکایە Inbox و Spam بپشکنە.'
+      );
+    } catch (error) {
+      console.log(
+        'RESEND ERROR:',
+        error
+      );
+
+      const message =
+        error?.message || '';
+
+      const lowerMessage =
+        message.toLowerCase();
+
+      if (
+        error?.status === 429 ||
+        lowerMessage.includes(
+          'rate limit'
+        ) ||
+        lowerMessage.includes(
+          'too many requests'
+        )
+      ) {
+        setResendMessage(
+          'ئیمەیڵەکان بۆ ئێستا سنووردار کراون. تکایە دواتر هەوڵ بدەوە.'
+        );
+      } else {
+        setResendMessage(
+          message ||
+            'نەتوانرا ئیمەیڵی پشتڕاستکردنەوە دووبارە بنێردرێت.'
+        );
+      }
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  // =====================================================
+  // Back To Login
+  // =====================================================
+
+  const handleBackToLogin = () => {
+    setPendingConfirmation(false);
+    setIsLogin(true);
+    setPassword('');
+    setResendMessage('');
+    setResendCooldown(0);
+  };
 
   // =====================================================
   // Login / Register
@@ -312,6 +470,39 @@ export default function WelcomeScreen({
           });
 
         if (error) {
+          const errorMessage =
+            error?.message
+              ?.toLowerCase() || '';
+
+          // ---------------------------------------------
+          // Email not confirmed
+          // ---------------------------------------------
+
+          if (
+            errorMessage.includes(
+              'email not confirmed'
+            ) ||
+            errorMessage.includes(
+              'not confirmed'
+            )
+          ) {
+            setConfirmationEmail(
+              cleanEmail
+            );
+
+            setPendingConfirmation(
+              true
+            );
+
+            setResendCooldown(0);
+
+            setResendMessage(
+              'ئیمەیلەکەت هێشتا پشتڕاست نەکراوەتەوە. دەتوانیت دووبارە ئیمەیڵی پشتڕاستکردنەوە بنێریت.'
+            );
+
+            return;
+          }
+
           throw error;
         }
 
@@ -341,7 +532,9 @@ export default function WelcomeScreen({
       const { data, error } =
         await supabase.auth.signUp({
           email: cleanEmail,
-          password: password,
+
+          password:
+            password,
 
           options: {
             emailRedirectTo:
@@ -360,18 +553,28 @@ export default function WelcomeScreen({
           },
         });
 
+      console.log(
+        'REDIRECT TO:',
+        redirectTo
+      );
+
+      console.log(
+        'SIGNUP DATA:',
+        data
+      );
+
+      console.log(
+        'SIGNUP ERROR:',
+        error
+      );
+
       if (error) {
         throw error;
       }
 
-      console.log(
-        'REGISTER DATA:',
-        data
-      );
-
-      // -------------------------------------------------
+      // -----------------------------------------------
       // If email confirmation is OFF
-      // -------------------------------------------------
+      // -----------------------------------------------
 
       if (data?.session) {
         if (onLoginSuccess) {
@@ -381,26 +584,24 @@ export default function WelcomeScreen({
         return;
       }
 
-      // -------------------------------------------------
-      // If email confirmation is ON
-      // -------------------------------------------------
+      // -----------------------------------------------
+      // Email confirmation required
+      // -----------------------------------------------
 
-      Alert.alert(
-        'تۆمارکردن سەرکەوتوو بوو',
-        'ئیمەیلێکی پشتڕاستکردنەوە بۆ ئیمەیلەکەت نێردرا. تکایە ئیمەیلەکەت بکەرەوە و لەسەر لینکی پشتڕاستکردنەوە کلیک بکە.',
-        [
-          {
-            text: 'باشە',
+      setConfirmationEmail(
+        cleanEmail
+      );
 
-            onPress: () => {
-              // بگەڕێوە بۆ Login
-              setIsLogin(true);
+      setPendingConfirmation(
+        true
+      );
 
-              // Password پاک بکەرەوە
-              setPassword('');
-            },
-          },
-        ]
+      // لینکە یەکەمەکە لەم کاتەدا نێردراوە.
+      // دوای 60 چرکە resend چالاک دەبێت.
+      setResendCooldown(60);
+
+      setResendMessage(
+        'ئیمەیلێکی پشتڕاستکردنەوە بۆت نێردرا. لینکەکە دوای ١ خولەک بەسەر دەچێت.'
       );
     } catch (err) {
       console.log(
@@ -435,6 +636,31 @@ export default function WelcomeScreen({
         return;
       }
 
+      // -------------------------------------------------
+      // Rate limit
+      // -------------------------------------------------
+
+      if (
+        err?.status === 429 ||
+        message
+          .toLowerCase()
+          .includes(
+            'rate limit'
+          ) ||
+        message
+          .toLowerCase()
+          .includes(
+            'too many requests'
+          )
+      ) {
+        Alert.alert(
+          'سنووری ناردنی ئیمەیل',
+          'ئێستا Supabase ڕێگە بە ناردنی ئیمەیلی زیاتر نادات. تکایە دواتر هەوڵ بدەوە.'
+        );
+
+        return;
+      }
+
       Alert.alert(
         'کێشەیەک ڕوویدا',
         message ||
@@ -444,6 +670,215 @@ export default function WelcomeScreen({
       setLoading(false);
     }
   };
+
+  // =====================================================
+  // Confirmation Screen
+  // =====================================================
+
+  if (pendingConfirmation) {
+    return (
+      <ImageBackground
+        source={require('../assets/bg-village.jpg')}
+        style={styles.bgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay}>
+          <SafeAreaView
+            style={styles.container}
+          >
+            <KeyboardAvoidingView
+              behavior={
+                Platform.OS === 'ios'
+                  ? 'padding'
+                  : 'height'
+              }
+              style={
+                styles.keyboardView
+              }
+            >
+              {/* Header */}
+
+              <View
+                style={
+                  styles.headerBox
+                }
+              >
+                <Text
+                  style={
+                    styles.mainTitle
+                  }
+                >
+                  ئاوایی بڵەسەن
+                </Text>
+
+                <Text
+                  style={
+                    styles.subTitle
+                  }
+                >
+                  پشتڕاستکردنەوەی ئیمەیل
+                </Text>
+              </View>
+
+              {/* Confirmation Card */}
+
+              <View
+                style={
+                  styles.authCard
+                }
+              >
+                <View
+                  style={
+                    styles.confirmIconBox
+                  }
+                >
+                  <Mail
+                    color={
+                      COLORS.primary ||
+                      '#D97706'
+                    }
+                    size={42}
+                  />
+                </View>
+
+                <Text
+                  style={
+                    styles.confirmTitle
+                  }
+                >
+                  ئیمەیلەکەت بپشکنە
+                </Text>
+
+                <Text
+                  style={
+                    styles.confirmEmail
+                  }
+                >
+                  {confirmationEmail}
+                </Text>
+
+                <Text
+                  style={
+                    styles.confirmText
+                  }
+                >
+                  لینکێکی پشتڕاستکردنەوە بۆ ئەم ئیمەیلە نێردراوە.
+                  تکایە Inbox و Spam ـەکەت بپشکنە.
+                </Text>
+
+                {/* Countdown */}
+
+                {resendCooldown > 0 ? (
+                  <View
+                    style={
+                      styles.countdownBox
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.countdownText
+                      }
+                    >
+                      دووبارە ناردن دوای
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.countdownNumber
+                      }
+                    >
+                      {resendCooldown}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.countdownText
+                      }
+                    >
+                      چرکە
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Resend Button */}
+
+                <TouchableOpacity
+                  style={[
+                    styles.resendBtn,
+
+                    (resendCooldown > 0 ||
+                      resendLoading) &&
+                      styles.resendBtnDisabled,
+                  ]}
+                  onPress={
+                    handleResendConfirmation
+                  }
+                  disabled={
+                    resendCooldown > 0 ||
+                    resendLoading
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={
+                      styles.resendBtnText
+                    }
+                  >
+                    {resendLoading
+                      ? 'لە ناردندایە...'
+                      : resendCooldown > 0
+                      ? `دووبارە ناردن (${resendCooldown})`
+                      : 'دووبارە ناردنی ئیمەیڵ'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Status Message */}
+
+                {resendMessage ? (
+                  <Text
+                    style={
+                      styles.resendMessage
+                    }
+                  >
+                    {resendMessage}
+                  </Text>
+                ) : null}
+
+                {/* Back To Login */}
+
+                <TouchableOpacity
+                  style={
+                    styles.backLoginBtn
+                  }
+                  onPress={
+                    handleBackToLogin
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={
+                      styles.backLoginText
+                    }
+                  >
+                    گەڕانەوە بۆ چوونە ژوورەوە
+                  </Text>
+                </TouchableOpacity>
+
+                <Text
+                  style={
+                    styles.footerNote
+                  }
+                >
+                  لینکەی کۆن دوای ١ خولەک بەسەر دەچێت.
+                  دوای ئەوە دەتوانیت لینکێکی نوێ داوا بکەیت.
+                </Text>
+              </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </View>
+      </ImageBackground>
+    );
+  }
 
   // =====================================================
   // UI
@@ -888,6 +1323,131 @@ const styles = StyleSheet.create({
   submitBtnText: {
     color: '#000000',
     fontSize: 15,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
+  // ===================================================
+  // Confirmation Screen Styles
+  // ===================================================
+
+  confirmIconBox: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor:
+      '#0B131F',
+    borderWidth: 1,
+    borderColor:
+      '#1E2C3D',
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+
+  confirmTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+
+  confirmEmail: {
+    color:
+      COLORS.primary ||
+      '#D97706',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+
+  confirmText: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+
+  countdownBox: {
+    backgroundColor:
+      '#0B131F',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor:
+      '#1E2C3D',
+  },
+
+  countdownText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+
+  countdownNumber: {
+    color:
+      COLORS.primary ||
+      '#D97706',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginVertical: 2,
+    textAlign: 'center',
+  },
+
+  resendBtn: {
+    backgroundColor:
+      COLORS.primary ||
+      '#D97706',
+    borderRadius: 12,
+    height: 50,
+    justifyContent:
+      'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+
+  resendBtnDisabled: {
+    opacity: 0.45,
+  },
+
+  resendBtnText: {
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+
+  resendMessage: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 12,
+  },
+
+  backLoginBtn: {
+    backgroundColor:
+      '#1E2C3D',
+    borderRadius: 12,
+    height: 46,
+    justifyContent:
+      'center',
+    alignItems: 'center',
+    marginTop: 14,
+  },
+
+  backLoginText: {
+    color: '#E2E8F0',
+    fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
   },
