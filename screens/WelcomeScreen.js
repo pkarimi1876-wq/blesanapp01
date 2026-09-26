@@ -1,7 +1,5 @@
-// screens/WelcomeScreen.js
 
-import React, { useEffect, useState } from 'react';
-
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,1451 +10,566 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Linking,
 } from 'react-native';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import {
   Mail,
   Lock,
   Eye,
   EyeOff,
+  User,
 } from 'lucide-react-native';
 
-import { makeRedirectUri } from 'expo-auth-session';
-
 import { COLORS } from '../constants/theme';
-
 import { supabase } from '../lib/supabase';
 
-// =====================================================
-// Email Confirmation Redirect
-// =====================================================
-
-const redirectTo = makeRedirectUri({
-  scheme: 'blesanapp',
-  path: 'auth/callback',
-});
-
-// =====================================================
-// Welcome Screen
-// =====================================================
-
-export default function WelcomeScreen({
-  onLoginSuccess,
-  onContinue,
-}) {
+export default function WelcomeScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
 
-  // Login / Email
-  const [emailOrPhone, setEmailOrPhone] = useState('');
-
-  // Password
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Register
-  const [fullName, setFullName] = useState('');
-  const [username, setUsername] = useState('');
-
-  // UI
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // =====================================================
-  // Email Confirmation / Resend
-  // =====================================================
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanUsername = username.trim();
+  const cleanFullName = fullName.trim();
 
-  const [pendingConfirmation, setPendingConfirmation] =
-    useState(false);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const usernameRegex = /^[A-Za-z0-9_.]+$/;
 
-  const [confirmationEmail, setConfirmationEmail] =
-    useState('');
+  const handleAuth = async () => {
+    if (loading) return;
 
-  const [resendLoading, setResendLoading] =
-    useState(false);
+    // =========================
+    // Validation
+    // =========================
 
-  const [resendCooldown, setResendCooldown] =
-    useState(0);
-
-  const [resendMessage, setResendMessage] =
-    useState('');
-
-  // =====================================================
-  // Resend Countdown
-  // =====================================================
-
-  useEffect(() => {
-    if (resendCooldown <= 0) {
+    if (!cleanEmail) {
+      Alert.alert('هەڵە', 'تکایە ئیمەیڵەکەت بنووسە.');
       return;
     }
 
-    const timer = setInterval(() => {
-      setResendCooldown((current) => {
-        if (current <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
+    if (!emailRegex.test(cleanEmail)) {
+      Alert.alert('هەڵە', 'تکایە ئیمەیڵێکی دروست بنووسە.');
+      return;
+    }
 
-        return current - 1;
-      });
-    }, 1000);
+    if (!cleanUsername) {
+      Alert.alert('هەڵە', 'تکایە ناوی بەکارهێنەر بنووسە.');
+      return;
+    }
 
-    return () => {
-      clearInterval(timer);
-    };
-  }, [resendCooldown]);
-
-  // =====================================================
-  // Deep Link / Email Confirmation
-  // =====================================================
-
-  useEffect(() => {
-    const handleDeepLink = async (url) => {
-      if (!url) return;
-
-      console.log(
-        'AUTH REDIRECT URL:',
-        url
+    if (!usernameRegex.test(cleanUsername)) {
+      Alert.alert(
+        'هەڵە',
+        'ناوی بەکارهێنەر تەنها دەتوانێت پیتی ئینگلیزی، ژمارە، _ یان . لەخۆبگرێت.'
       );
+      return;
+    }
 
+    if (!password) {
+      Alert.alert('هەڵە', 'تکایە وشەی نهێنی بنووسە.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(
+        'هەڵە',
+        'وشەی نهێنی دەبێت لانیکەم ٦ پیت بێت.'
+      );
+      return;
+    }
+
+    // =========================
+    // LOGIN
+    // =========================
+
+    if (isLogin) {
       try {
-        const urlObject = new URL(url);
+        setLoading(true);
 
-        // -----------------------------------------------
-        // PKCE code
-        // -----------------------------------------------
+        const { data, error } =
+          await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
 
-        const code =
-          urlObject.searchParams.get(
-            'code'
+        if (error) {
+          console.log('LOGIN ERROR:', error);
+
+          Alert.alert(
+            'چوونەژوورەوە سەرکەوتوو نەبوو',
+            'ئیمەیڵ، ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە.'
           );
-
-        if (code) {
-          const { error } =
-            await supabase.auth.exchangeCodeForSession(
-              code
-            );
-
-          if (error) {
-            throw error;
-          }
-
-          console.log(
-            'EMAIL CONFIRMATION SUCCESS'
-          );
-
-          setPendingConfirmation(false);
-          setResendCooldown(0);
-          setResendMessage('');
-
-          if (onLoginSuccess) {
-            onLoginSuccess();
-          }
 
           return;
         }
 
-        // -----------------------------------------------
-        // access_token / refresh_token
-        // -----------------------------------------------
+        const user = data?.user;
 
-        const hash =
-          urlObject.hash?.replace('#', '');
-
-        if (hash) {
-          const params =
-            new URLSearchParams(hash);
-
-          const accessToken =
-            params.get(
-              'access_token'
-            );
-
-          const refreshToken =
-            params.get(
-              'refresh_token'
-            );
-
-          if (
-            accessToken &&
-            refreshToken
-          ) {
-            const { error } =
-              await supabase.auth.setSession({
-                access_token:
-                  accessToken,
-
-                refresh_token:
-                  refreshToken,
-              });
-
-            if (error) {
-              throw error;
-            }
-
-            console.log(
-              'EMAIL CONFIRMATION SUCCESS'
-            );
-
-            setPendingConfirmation(false);
-            setResendCooldown(0);
-            setResendMessage('');
-
-            if (onLoginSuccess) {
-              onLoginSuccess();
-            }
-
-            return;
-          }
-        }
-
-        console.log(
-          'No auth session found in redirect URL'
-        );
-      } catch (error) {
-        console.log(
-          'DEEP LINK ERROR:',
-          error
-        );
-
-        Alert.alert(
-          'کێشەیەک ڕوویدا',
-          error?.message ||
-            'نەتوانرا پشتڕاستکردنەوەی ئیمەیل تەواو بکرێت.'
-        );
-      }
-    };
-
-    // Initial URL
-    Linking.getInitialURL().then(
-      handleDeepLink
-    );
-
-    // URL event
-    const subscription =
-      Linking.addEventListener(
-        'url',
-        ({ url }) => {
-          handleDeepLink(url);
-        }
-      );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [onLoginSuccess]);
-
-  // =====================================================
-  // Resend Confirmation Email
-  // =====================================================
-
-  const handleResendConfirmation = async () => {
-    if (!confirmationEmail) {
-      Alert.alert(
-        'ئاگاداری',
-        'ئیمەیلی پشتڕاستکردنەوە نییە.'
-      );
-
-      return;
-    }
-
-    if (resendLoading) {
-      return;
-    }
-
-    if (resendCooldown > 0) {
-      return;
-    }
-
-    setResendLoading(true);
-    setResendMessage('');
-
-    try {
-      console.log(
-        'RESEND EMAIL:',
-        confirmationEmail
-      );
-
-      const { error } =
-        await supabase.auth.resend({
-          type: 'signup',
-
-          email:
-            confirmationEmail,
-
-          options: {
-            emailRedirectTo:
-              redirectTo,
-          },
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      console.log(
-        'CONFIRMATION EMAIL RESENT'
-      );
-
-      // دووبارە 60 چرکە چاوەڕوانی
-      setResendCooldown(60);
-
-      setResendMessage(
-        'ئیمەیڵی نوێی پشتڕاستکردنەوە نێردرا. تکایە Inbox و Spam بپشکنە.'
-      );
-    } catch (error) {
-      console.log(
-        'RESEND ERROR:',
-        error
-      );
-
-      const message =
-        error?.message || '';
-
-      const lowerMessage =
-        message.toLowerCase();
-
-      if (
-        error?.status === 429 ||
-        lowerMessage.includes(
-          'rate limit'
-        ) ||
-        lowerMessage.includes(
-          'too many requests'
-        )
-      ) {
-        setResendMessage(
-          'ئیمەیڵەکان بۆ ئێستا سنووردار کراون. تکایە دواتر هەوڵ بدەوە.'
-        );
-      } else {
-        setResendMessage(
-          message ||
-            'نەتوانرا ئیمەیڵی پشتڕاستکردنەوە دووبارە بنێردرێت.'
-        );
-      }
-    } finally {
-      setResendLoading(false);
-    }
-  };
-
-  // =====================================================
-  // Back To Login
-  // =====================================================
-
-  const handleBackToLogin = () => {
-    setPendingConfirmation(false);
-    setIsLogin(true);
-    setPassword('');
-    setResendMessage('');
-    setResendCooldown(0);
-  };
-
-  // =====================================================
-  // Login / Register
-  // =====================================================
-
-  const handleAuth = async () => {
-    const cleanEmail =
-      emailOrPhone
-        .trim()
-        .toLowerCase();
-
-    const cleanFullName =
-      fullName.trim();
-
-    const cleanUsername =
-      username.trim();
-
-    // ---------------------------------------------------
-    // Email validation
-    // ---------------------------------------------------
-
-    const emailRegex =
-      /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
-
-    // ---------------------------------------------------
-    // Basic validation
-    // ---------------------------------------------------
-
-    if (!cleanEmail) {
-      Alert.alert(
-        'ئاگاداری',
-        'تکایە ئیمەیل بنووسە.'
-      );
-      return;
-    }
-
-    if (!password.trim()) {
-      Alert.alert(
-        'ئاگاداری',
-        'تکایە وشەی نهێنی بنووسە.'
-      );
-      return;
-    }
-
-    if (
-      !emailRegex.test(
-        cleanEmail
-      )
-    ) {
-      Alert.alert(
-        'ئیمەیلی هەڵە',
-        'تکایە ئیمەیلێکی دروست بنووسە.\nنموونە: example@gmail.com'
-      );
-      return;
-    }
-
-    // ---------------------------------------------------
-    // Register validation
-    // ---------------------------------------------------
-
-    if (!isLogin) {
-      if (!cleanFullName) {
-        Alert.alert(
-          'ئاگاداری',
-          'تکایە ناوی تەواو بنووسە.'
-        );
-        return;
-      }
-
-      if (!cleanUsername) {
-        Alert.alert(
-          'ئاگاداری',
-          'تکایە Username بنووسە.'
-        );
-        return;
-      }
-
-      if (
-        cleanUsername.length < 3
-      ) {
-        Alert.alert(
-          'ئاگاداری',
-          'Username دەبێت لانیکەم 3 پیت بێت.'
-        );
-        return;
-      }
-
-      // تەنها پیت و ژمارە و _ و .
-      const usernameRegex =
-        /^[A-Za-z0-9_.]+$/;
-
-      if (
-        !usernameRegex.test(
-          cleanUsername
-        )
-      ) {
-        Alert.alert(
-          'Username ـی هەڵە',
-          'Username تەنها دەتوانێت پیت، ژمارە، _ یان . لەخۆ بگرێت.'
-        );
-        return;
-      }
-    }
-
-    setLoading(true);
-
-    try {
-      // =================================================
-      // LOGIN
-      // =================================================
-
-      if (isLogin) {
-        const { data, error } =
-          await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: password,
-          });
-
-        if (error) {
-          const errorMessage =
-            error?.message
-              ?.toLowerCase() || '';
-
-          // ---------------------------------------------
-          // Email not confirmed
-          // ---------------------------------------------
-
-          if (
-            errorMessage.includes(
-              'email not confirmed'
-            ) ||
-            errorMessage.includes(
-              'not confirmed'
-            )
-          ) {
-            setConfirmationEmail(
-              cleanEmail
-            );
-
-            setPendingConfirmation(
-              true
-            );
-
-            setResendCooldown(0);
-
-            setResendMessage(
-              'ئیمەیلەکەت هێشتا پشتڕاست نەکراوەتەوە. دەتوانیت دووبارە ئیمەیڵی پشتڕاستکردنەوە بنێریت.'
-            );
-
-            return;
-          }
-
-          throw error;
-        }
-
-        console.log(
-          'LOGIN DATA:',
-          data
-        );
-
-        if (data?.session) {
-          if (onLoginSuccess) {
-            onLoginSuccess();
-          }
-        } else {
+        if (!user) {
           Alert.alert(
-            'ئاگاداری',
-            'نەتوانرا session ـی بەکارهێنەر دروست بکرێت.'
+            'هەڵە',
+            'نەتوانرا زانیاری بەکارهێنەر وەربگیرێت.'
           );
+
+          return;
         }
 
-        return;
+        // =========================
+        // Get profile
+        // =========================
+
+        const { data: profile, error: profileError } =
+          await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError || !profile) {
+          console.log('PROFILE ERROR:', profileError);
+
+          await supabase.auth.signOut();
+
+          Alert.alert(
+            'هەڵە',
+            'پرۆفایلی بەکارهێنەر نەدۆزرایەوە.'
+          );
+
+          return;
+        }
+
+        // =========================
+        // Check username
+        // =========================
+
+        if (
+          (profile.username || '').toLowerCase() !==
+          cleanUsername.toLowerCase()
+        ) {
+          await supabase.auth.signOut();
+
+          Alert.alert(
+            'چوونەژوورەوە سەرکەوتوو نەبوو',
+            'ئیمەیڵ، ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە.'
+          );
+
+          return;
+        }
+
+        // =========================
+        // GO TO HOME
+        // =========================
+
+        navigation.replace('MainTabs');
+
+      } catch (error) {
+        console.log('LOGIN CATCH ERROR:', error);
+
+        Alert.alert(
+          'هەڵە',
+          'کێشەیەک ڕوویدا، تکایە دووبارە هەوڵ بدەرەوە.'
+        );
+      } finally {
+        setLoading(false);
       }
 
-      // =================================================
-      // REGISTER
-      // =================================================
+      return;
+    }
+
+    // =========================
+    // REGISTER
+    // =========================
+
+    if (!cleanFullName) {
+      Alert.alert(
+        'هەڵە',
+        'تکایە ناوی تەواوت بنووسە.'
+      );
+
+      return;
+    }
+
+    try {
+      setLoading(true);
 
       const { data, error } =
         await supabase.auth.signUp({
           email: cleanEmail,
-
-          password:
-            password,
-
+          password,
           options: {
-            emailRedirectTo:
-              redirectTo,
-
             data: {
-              first_name:
-                cleanFullName,
-
-              last_name:
-                '',
-
-              username:
-                cleanUsername,
+              first_name: cleanFullName,
+              last_name: '',
+              username: cleanUsername,
             },
           },
         });
 
-      console.log(
-        'REDIRECT TO:',
-        redirectTo
-      );
-
-      console.log(
-        'SIGNUP DATA:',
-        data
-      );
-
-      console.log(
-        'SIGNUP ERROR:',
-        error
-      );
-
       if (error) {
-        throw error;
-      }
+        console.log('SIGNUP ERROR:', error);
 
-      // -----------------------------------------------
-      // If email confirmation is OFF
-      // -----------------------------------------------
-
-      if (data?.session) {
-        if (onLoginSuccess) {
-          onLoginSuccess();
-        }
-
-        return;
-      }
-
-      // -----------------------------------------------
-      // Email confirmation required
-      // -----------------------------------------------
-
-      setConfirmationEmail(
-        cleanEmail
-      );
-
-      setPendingConfirmation(
-        true
-      );
-
-      // لینکە یەکەمەکە لەم کاتەدا نێردراوە.
-      // دوای 60 چرکە resend چالاک دەبێت.
-      setResendCooldown(60);
-
-      setResendMessage(
-        'ئیمەیلێکی پشتڕاستکردنەوە بۆت نێردرا. لینکەکە دوای ١ خولەک بەسەر دەچێت.'
-      );
-    } catch (err) {
-      console.log(
-        'AUTH ERROR:',
-        err
-      );
-
-      // -------------------------------------------------
-      // Username duplicate / DB error / Auth error
-      // -------------------------------------------------
-
-      const message =
-        err?.message || '';
-
-      if (
-        message
-          .toLowerCase()
-          .includes(
-            'duplicate'
-          ) ||
-        message
-          .toLowerCase()
-          .includes(
-            'unique'
-          )
-      ) {
         Alert.alert(
-          'Username بەکارهاتووە',
-          'ئەم Username ـە پێشتر بەکارهاتووە. تکایە Username ـێکی تر هەڵبژێرە.'
+          'تۆمارکردن سەرکەوتوو نەبوو',
+          error.message ||
+            'کێشەیەک لە تۆمارکردندا ڕوویدا.'
         );
 
         return;
       }
 
-      // -------------------------------------------------
-      // Rate limit
-      // -------------------------------------------------
+      const user = data?.user;
+      const session = data?.session;
 
-      if (
-        err?.status === 429 ||
-        message
-          .toLowerCase()
-          .includes(
-            'rate limit'
-          ) ||
-        message
-          .toLowerCase()
-          .includes(
-            'too many requests'
-          )
-      ) {
+      if (!user) {
         Alert.alert(
-          'سنووری ناردنی ئیمەیل',
-          'ئێستا Supabase ڕێگە بە ناردنی ئیمەیلی زیاتر نادات. تکایە دواتر هەوڵ بدەوە.'
+          'هەڵە',
+          'نەتوانرا هەژمارەکە دروست بکرێت.'
         );
 
         return;
       }
+
+      // =========================
+      // Email confirmation must be OFF
+      // =========================
+
+      if (!session) {
+        Alert.alert(
+          'تۆمارکردن تەواو نەبوو',
+          'Email Confirmation لە Supabase هێشتا چالاکە. تکایە Confirm email دابخە.'
+        );
+
+        return;
+      }
+
+      // =========================
+      // GO TO HOME
+      // =========================
+
+      navigation.replace('MainTabs');
+
+    } catch (error) {
+      console.log('SIGNUP CATCH ERROR:', error);
 
       Alert.alert(
-        'کێشەیەک ڕوویدا',
-        message ||
-          'هەڵەیەکی نەناسراو ڕوویدا.'
+        'هەڵە',
+        'کێشەیەک لە تۆمارکردندا ڕوویدا.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // =====================================================
-  // Confirmation Screen
-  // =====================================================
-
-  if (pendingConfirmation) {
-    return (
-      <ImageBackground
-        source={require('../assets/bg-village.jpg')}
-        style={styles.bgImage}
-        resizeMode="cover"
-      >
-        <View style={styles.overlay}>
-          <SafeAreaView
-            style={styles.container}
-          >
-            <KeyboardAvoidingView
-              behavior={
-                Platform.OS === 'ios'
-                  ? 'padding'
-                  : 'height'
-              }
-              style={
-                styles.keyboardView
-              }
-            >
-              {/* Header */}
-
-              <View
-                style={
-                  styles.headerBox
-                }
-              >
-                <Text
-                  style={
-                    styles.mainTitle
-                  }
-                >
-                  ئاوایی بڵەسەن
-                </Text>
-
-                <Text
-                  style={
-                    styles.subTitle
-                  }
-                >
-                  پشتڕاستکردنەوەی ئیمەیل
-                </Text>
-              </View>
-
-              {/* Confirmation Card */}
-
-              <View
-                style={
-                  styles.authCard
-                }
-              >
-                <View
-                  style={
-                    styles.confirmIconBox
-                  }
-                >
-                  <Mail
-                    color={
-                      COLORS.primary ||
-                      '#D97706'
-                    }
-                    size={42}
-                  />
-                </View>
-
-                <Text
-                  style={
-                    styles.confirmTitle
-                  }
-                >
-                  ئیمەیلەکەت بپشکنە
-                </Text>
-
-                <Text
-                  style={
-                    styles.confirmEmail
-                  }
-                >
-                  {confirmationEmail}
-                </Text>
-
-                <Text
-                  style={
-                    styles.confirmText
-                  }
-                >
-                  لینکێکی پشتڕاستکردنەوە بۆ ئەم ئیمەیلە نێردراوە.
-                  تکایە Inbox و Spam ـەکەت بپشکنە.
-                </Text>
-
-                {/* Countdown */}
-
-                {resendCooldown > 0 ? (
-                  <View
-                    style={
-                      styles.countdownBox
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.countdownText
-                      }
-                    >
-                      دووبارە ناردن دوای
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.countdownNumber
-                      }
-                    >
-                      {resendCooldown}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.countdownText
-                      }
-                    >
-                      چرکە
-                    </Text>
-                  </View>
-                ) : null}
-
-                {/* Resend Button */}
-
-                <TouchableOpacity
-                  style={[
-                    styles.resendBtn,
-
-                    (resendCooldown > 0 ||
-                      resendLoading) &&
-                      styles.resendBtnDisabled,
-                  ]}
-                  onPress={
-                    handleResendConfirmation
-                  }
-                  disabled={
-                    resendCooldown > 0 ||
-                    resendLoading
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={
-                      styles.resendBtnText
-                    }
-                  >
-                    {resendLoading
-                      ? 'لە ناردندایە...'
-                      : resendCooldown > 0
-                      ? `دووبارە ناردن (${resendCooldown})`
-                      : 'دووبارە ناردنی ئیمەیڵ'}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Status Message */}
-
-                {resendMessage ? (
-                  <Text
-                    style={
-                      styles.resendMessage
-                    }
-                  >
-                    {resendMessage}
-                  </Text>
-                ) : null}
-
-                {/* Back To Login */}
-
-                <TouchableOpacity
-                  style={
-                    styles.backLoginBtn
-                  }
-                  onPress={
-                    handleBackToLogin
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={
-                      styles.backLoginText
-                    }
-                  >
-                    گەڕانەوە بۆ چوونە ژوورەوە
-                  </Text>
-                </TouchableOpacity>
-
-                <Text
-                  style={
-                    styles.footerNote
-                  }
-                >
-                  لینکەی کۆن دوای ١ خولەک بەسەر دەچێت.
-                  دوای ئەوە دەتوانیت لینکێکی نوێ داوا بکەیت.
-                </Text>
-              </View>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </View>
-      </ImageBackground>
-    );
-  }
-
-  // =====================================================
-  // UI
-  // =====================================================
-
   return (
     <ImageBackground
       source={require('../assets/bg-village.jpg')}
-      style={styles.bgImage}
+      style={styles.background}
       resizeMode="cover"
     >
-      <View style={styles.overlay}>
-        <SafeAreaView
-          style={styles.container}
-        >
-          <KeyboardAvoidingView
-            behavior={
-              Platform.OS === 'ios'
-                ? 'padding'
-                : 'height'
-            }
-            style={
-              styles.keyboardView
-            }
-          >
-            {/* =========================================
-                Header
-               ========================================= */}
+      <View style={styles.overlay} />
 
-            <View
-              style={styles.headerBox}
-            >
-              <Text
-                style={styles.mainTitle}
-              >
-                ئاوایی بڵەسەن
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : undefined
+          }
+        >
+          <View style={styles.content}>
+
+            {/* =========================
+                HEADER
+            ========================== */}
+
+            <View style={styles.header}>
+              <Text style={styles.title}>
+                دێهاتی بڵەسەن
               </Text>
 
-              <Text
-                style={styles.subTitle}
-              >
-                بەخێربێیت بۆ گوندەکەمان
+              <Text style={styles.subtitle}>
+                بەخێربێیت بۆ دێهاتی بڵەسەن
               </Text>
             </View>
 
-            {/* =========================================
-                Auth Card
-               ========================================= */}
+            {/* =========================
+                FORM
+            ========================== */}
 
-            <View
-              style={styles.authCard}
-            >
-              {/* ---------------------------------------
-                  Login / Register Tabs
-                 --------------------------------------- */}
+            <View style={styles.form}>
 
-              <View
-                style={
-                  styles.tabContainer
-                }
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.tabBtn,
-                    !isLogin &&
-                      styles.activeTabBtn,
-                  ]}
-                  onPress={() =>
-                    setIsLogin(false)
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      !isLogin &&
-                        styles.activeTabText,
-                    ]}
-                  >
-                    خۆتۆمارکردن
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.tabBtn,
-                    isLogin &&
-                      styles.activeTabBtn,
-                  ]}
-                  onPress={() =>
-                    setIsLogin(true)
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      isLogin &&
-                        styles.activeTabText,
-                    ]}
-                  >
-                    چوونە ژوورەوە
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* =======================================
-                  Register Fields
-                 ======================================= */}
-
+              {/* Full Name - Register only */}
               {!isLogin && (
-                <>
-                  {/* Full Name */}
+                <View style={styles.inputContainer}>
+                  <User
+                    size={21}
+                    color={COLORS?.primary || '#6b4f2a'}
+                  />
 
-                  <View
-                    style={
-                      styles.inputBox
-                    }
-                  >
-                    <TextInput
-                      style={
-                        styles.input
-                      }
-                      placeholder="ناوی تەواو"
-                      placeholderTextColor="#718096"
-                      value={
-                        fullName
-                      }
-                      onChangeText={
-                        setFullName
-                      }
-                      textAlign="right"
-                      autoCapitalize="words"
-                      autoCorrect={
-                        false
-                      }
-                    />
-                  </View>
-
-                  {/* Username */}
-
-                  <View
-                    style={
-                      styles.inputBox
-                    }
-                  >
-                    <TextInput
-                      style={
-                        styles.input
-                      }
-                      placeholder="Username"
-                      placeholderTextColor="#718096"
-                      value={
-                        username
-                      }
-                      onChangeText={
-                        setUsername
-                      }
-                      textAlign="right"
-                      autoCapitalize="none"
-                      autoCorrect={
-                        false
-                      }
-                    />
-                  </View>
-                </>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="ناوی تەواو"
+                    placeholderTextColor="#888"
+                    value={fullName}
+                    onChangeText={setFullName}
+                    autoCapitalize="words"
+                  />
+                </View>
               )}
 
-              {/* =======================================
-                  Email
-                 ======================================= */}
-
-              <View
-                style={
-                  styles.inputBox
-                }
-              >
+              {/* Email */}
+              <View style={styles.inputContainer}>
                 <Mail
-                  color="#A0AEC0"
-                  size={20}
+                  size={21}
+                  color={COLORS?.primary || '#6b4f2a'}
                 />
 
                 <TextInput
-                  style={
-                    styles.input
-                  }
-                  placeholder="ئیمەیل"
-                  placeholderTextColor="#718096"
-                  value={
-                    emailOrPhone
-                  }
-                  onChangeText={
-                    setEmailOrPhone
-                  }
+                  style={styles.input}
+                  placeholder="ئیمەیڵ"
+                  placeholderTextColor="#888"
+                  value={email}
+                  onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
               </View>
 
-              {/* =======================================
-                  Password
-                 ======================================= */}
-
-              <View
-                style={
-                  styles.inputBox
-                }
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    setShowPassword(
-                      !showPassword
-                    )
-                  }
-                  activeOpacity={0.7}
-                >
-                  {showPassword ? (
-                    <EyeOff
-                      color="#A0AEC0"
-                      size={20}
-                    />
-                  ) : (
-                    <Eye
-                      color="#A0AEC0"
-                      size={20}
-                    />
-                  )}
-                </TouchableOpacity>
+              {/* Username */}
+              <View style={styles.inputContainer}>
+                <User
+                  size={21}
+                  color={COLORS?.primary || '#6b4f2a'}
+                />
 
                 <TextInput
-                  style={
-                    styles.input
-                  }
+                  style={styles.input}
+                  placeholder="ناوی بەکارهێنەر"
+                  placeholderTextColor="#888"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Password */}
+              <View style={styles.inputContainer}>
+                <Lock
+                  size={21}
+                  color={COLORS?.primary || '#6b4f2a'}
+                />
+
+                <TextInput
+                  style={styles.input}
                   placeholder="وشەی نهێنی"
-                  placeholderTextColor="#718096"
-                  secureTextEntry={
-                    !showPassword
-                  }
-                  value={
-                    password
-                  }
-                  onChangeText={
-                    setPassword
-                  }
+                  placeholderTextColor="#888"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
 
-                <Lock
-                  color="#A0AEC0"
-                  size={20}
-                />
+                <TouchableOpacity
+                  onPress={() =>
+                    setShowPassword(!showPassword)
+                  }
+                  style={styles.eyeButton}
+                >
+                  {showPassword ? (
+                    <EyeOff
+                      size={21}
+                      color="#777"
+                    />
+                  ) : (
+                    <Eye
+                      size={21}
+                      color="#777"
+                    />
+                  )}
+                </TouchableOpacity>
               </View>
 
-              {/* =======================================
-                  Submit
-                 ======================================= */}
+              {/* =========================
+                  MAIN BUTTON
+              ========================== */}
 
               <TouchableOpacity
                 style={[
-                  styles.submitBtn,
-                  loading &&
-                    styles.submitBtnDisabled,
+                  styles.mainButton,
+                  loading && styles.disabledButton,
                 ]}
-                onPress={
-                  handleAuth
-                }
-                disabled={
-                  loading
-                }
-                activeOpacity={0.8}
+                onPress={handleAuth}
+                disabled={loading}
               >
-                <Text
-                  style={
-                    styles.submitBtnText
-                  }
-                >
+                <Text style={styles.mainButtonText}>
                   {loading
-                    ? 'تکایە چاوەڕێ بکە...'
+                    ? 'تکایە چاوەڕوان بە...'
                     : isLogin
-                    ? 'چوونە ژوورەوە'
+                    ? 'چوونەژوورەوە'
                     : 'تۆمارکردن'}
                 </Text>
               </TouchableOpacity>
 
-              {/* =======================================
-                  Footer
-                 ======================================= */}
+              {/* =========================
+                  SWITCH LOGIN / REGISTER
+              ========================== */}
 
-              <Text
-                style={
-                  styles.footerNote
-                }
-              >
-                بۆ بینین و بەشدارییکردن پێویستە بچیتە ژوورەوە
-              </Text>
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchText}>
+                  {isLogin
+                    ? 'هەژمارت نییە؟'
+                    : 'پێشتر هەژمارت هەیە؟'}
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsLogin(!isLogin);
+                    setPassword('');
+                  }}
+                >
+                  <Text style={styles.switchButton}>
+                    {isLogin
+                      ? 'تۆمارکردن'
+                      : 'چوونەژوورەوە'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
             </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </ImageBackground>
   );
 }
 
-// =====================================================
-// Styles
-// =====================================================
-
 const styles = StyleSheet.create({
-  bgImage: {
+  background: {
     flex: 1,
   },
 
   overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.30)',
+  },
+
+  safeArea: {
     flex: 1,
-    backgroundColor:
-      'rgba(11, 19, 31, 0.65)',
   },
 
   container: {
     flex: 1,
   },
 
-  keyboardView: {
+  content: {
     flex: 1,
-    justifyContent:
-      'space-between',
-    padding: 20,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
 
-  headerBox: {
+  header: {
     alignItems: 'center',
-    marginTop: 50,
+    marginBottom: 30,
   },
 
-  mainTitle: {
-    fontSize: 36,
+  title: {
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#fff',
     textAlign: 'center',
-    textShadowColor:
-      'rgba(0, 0, 0, 0.8)',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: {
-      width: 0,
+      width: 1,
       height: 2,
     },
-    textShadowRadius: 10,
+    textShadowRadius: 4,
   },
 
-  subTitle: {
+  subtitle: {
     fontSize: 16,
-    color: '#E2E8F0',
-    marginTop: 6,
+    color: '#fff',
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: {
+      width: 1,
+      height: 1,
+    },
+    textShadowRadius: 3,
   },
 
-  authCard: {
-    backgroundColor:
-      'rgba(19, 29, 42, 0.85)',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor:
-      'rgba(255, 255, 255, 0.1)',
-    marginBottom: 20,
+  form: {
+    width: '100%',
   },
 
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor:
-      '#0B131F',
+  inputContainer: {
+    height: 56,
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderRadius: 14,
-    padding: 4,
-    marginBottom: 20,
-  },
-
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-  },
-
-  activeTabBtn: {
-    backgroundColor:
-      '#1E2C3D',
-  },
-
-  tabText: {
-    color: '#718096',
-    fontSize: 13,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-
-  activeTabText: {
-    color:
-      COLORS.primary ||
-      '#D97706',
-  },
-
-  inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor:
-      '#0B131F',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 50,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor:
-      '#1E2C3D',
+    paddingHorizontal: 16,
+    marginBottom: 13,
   },
 
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#222',
+    marginLeft: 10,
     textAlign: 'right',
-    paddingHorizontal: 10,
-    fontSize: 13,
   },
 
-  submitBtn: {
-    backgroundColor:
-      COLORS.primary ||
-      '#D97706',
-    borderRadius: 12,
-    height: 50,
-    justifyContent:
-      'center',
+  eyeButton: {
+    padding: 5,
+  },
+
+  mainButton: {
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: COLORS?.primary || '#6b4f2a',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 8,
   },
 
-  submitBtnDisabled: {
-    opacity: 0.6,
+  disabledButton: {
+    opacity: 0.65,
   },
 
-  submitBtnText: {
-    color: '#000000',
+  mainButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 6,
+  },
+
+  switchText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+
+  switchButton: {
+    color: '#fff',
     fontSize: 15,
     fontWeight: 'bold',
-    textAlign: 'center',
-  },
-
-  // ===================================================
-  // Confirmation Screen Styles
-  // ===================================================
-
-  confirmIconBox: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor:
-      '#0B131F',
-    borderWidth: 1,
-    borderColor:
-      '#1E2C3D',
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-
-  confirmTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-
-  confirmEmail: {
-    color:
-      COLORS.primary ||
-      '#D97706',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 14,
-  },
-
-  confirmText: {
-    color: '#CBD5E1',
-    fontSize: 13,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 18,
-  },
-
-  countdownBox: {
-    backgroundColor:
-      '#0B131F',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor:
-      '#1E2C3D',
-  },
-
-  countdownText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-
-  countdownNumber: {
-    color:
-      COLORS.primary ||
-      '#D97706',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginVertical: 2,
-    textAlign: 'center',
-  },
-
-  resendBtn: {
-    backgroundColor:
-      COLORS.primary ||
-      '#D97706',
-    borderRadius: 12,
-    height: 50,
-    justifyContent:
-      'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-
-  resendBtnDisabled: {
-    opacity: 0.45,
-  },
-
-  resendBtnText: {
-    color: '#000000',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-
-  resendMessage: {
-    color: '#CBD5E1',
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 12,
-  },
-
-  backLoginBtn: {
-    backgroundColor:
-      '#1E2C3D',
-    borderRadius: 12,
-    height: 46,
-    justifyContent:
-      'center',
-    alignItems: 'center',
-    marginTop: 14,
-  },
-
-  backLoginText: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-
-  footerNote: {
-    color: '#718096',
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 14,
-    lineHeight: 18,
+    textDecorationLine: 'underline',
   },
 });
