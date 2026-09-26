@@ -1,575 +1,451 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StatusBar, View } from "react-native";
 import {
-  StyleSheet,
-  Text,
-  View,
-  ImageBackground,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  NavigationContainer,
+} from "@react-navigation/native";
 import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  User,
-} from 'lucide-react-native';
+  createNativeStackNavigator,
+} from "@react-navigation/native-stack";
+import {
+  createBottomTabNavigator,
+} from "@react-navigation/bottom-tabs";
+import {
+  Home,
+  GitFork,
+  PenTool,
+  Newspaper,
+} from "lucide-react-native";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-import { COLORS } from '../constants/theme';
-import { supabase } from '../lib/supabase';
+import { supabase } from "./lib/supabase";
 
-export default function WelcomeScreen({ navigation }) {
-  const [isLogin, setIsLogin] = useState(true);
+// Main screens
+import WelcomeScreen from "./screens/WelcomeScreen";
+import UserLoginScreen from "./screens/UserLoginScreen";
+import UserSignUpScreen from "./screens/UserSignUpScreen";
+import HomeScreen from "./screens/HomeScreen";
+import TreeScreen from "./screens/TreeScreen";
+import WritersScreen from "./screens/WritersScreen";
+import NewsScreen from "./screens/NewsScreen";
+import MemorialScreen from "./screens/MemorialScreen";
+import ContactScreen from "./screens/ContactScreen";
+import GalleryScreen from "./screens/GalleryScreen";
+import MunicipalityScreen from "./screens/MunicipalityScreen";
+import AdContactScreen from "./screens/AdContactScreen";
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+// Admin screens
+import AdminPanelScreen from "./screens/AdminPanelScreen";
+import AdminManagementScreen from "./screens/AdminManagementScreen";
+import ManageWritersScreen from "./screens/ManageWritersScreen";
+import ManageTreeScreen from "./screens/ManageTreeScreen";
+import ManageNewsScreen from "./screens/ManageNewsScreen";
+import ManageGalleryScreen from "./screens/ManageGalleryScreen";
+import ManageAdsScreen from "./screens/ManageAdScreen";
+import ManageBllasanAboutScreen from "./screens/ManageBllasanAboutScreen";
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+// Writer / article screens
+import AuthScreen from "./screens/AuthorsScreen";
+import WriterProfileScreen from "./screens/WriterProfileScreen";
+import WriterProfileCreateScreen from "./screens/WriterProfileCreateScreen";
+import ArticleDetailsScreen from "./screens/ArticleDetailsScreen";
+import WriterDashboardScreen from "./screens/WriterDashboardScreen";
+import CreateArticleScreen from "./screens/CreateArticleScreen";
+import EditArticleScreen from "./screens/EditArticleScreen";
+import ChangePasswordScreen from "./screens/ChangePasswordScreen";
+import BllasanAboutScreen from "./screens/BllasanAboutScreen";
+import ManageQuickNewsScreen from "./screens/ManageQuickNewsScreen";
+import WeatherScreen from "./screens/WeatherScreen";
+import AiScreen from "./screens/AiScreen";
 
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanUsername = username.trim();
-  const cleanFullName = fullName.trim();
+// Municipality
+import MunicipalitySectionScreen from "./screens/MunicipalitySectionScreen";
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const usernameRegex = /^[A-Za-z0-9_.]+$/;
+// Admin login
+import LoginAdminPanelScreen from "./screens/LoginAdmnPanelScreen";
 
-  const handleAuth = async () => {
-    if (loading) return;
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-    // =========================
-    // Validation
-    // =========================
+const COLORS = {
+  background: "#0B1F33",
+  tabBarBg: "#0B1F33",
+  cardBorder: "#D4A017",
+  primary: "#D4A017",
+  textSub: "#AAB4BE",
+};
 
-    if (!cleanEmail) {
-      Alert.alert('هەڵە', 'تکایە ئیمەیڵەکەت بنووسە.');
-      return;
-    }
-
-    if (!emailRegex.test(cleanEmail)) {
-      Alert.alert('هەڵە', 'تکایە ئیمەیڵێکی دروست بنووسە.');
-      return;
-    }
-
-    if (!cleanUsername) {
-      Alert.alert('هەڵە', 'تکایە ناوی بەکارهێنەر بنووسە.');
-      return;
-    }
-
-    if (!usernameRegex.test(cleanUsername)) {
-      Alert.alert(
-        'هەڵە',
-        'ناوی بەکارهێنەر تەنها دەتوانێت پیتی ئینگلیزی، ژمارە، _ یان . لەخۆبگرێت.'
-      );
-      return;
-    }
-
-    if (!password) {
-      Alert.alert('هەڵە', 'تکایە وشەی نهێنی بنووسە.');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert(
-        'هەڵە',
-        'وشەی نهێنی دەبێت لانیکەم ٦ پیت بێت.'
-      );
-      return;
-    }
-
-    // =========================
-    // LOGIN
-    // =========================
-
-    if (isLogin) {
-      try {
-        setLoading(true);
-
-        const { data, error } =
-          await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-          });
-
-        if (error) {
-          console.log('LOGIN ERROR:', error);
-
-          Alert.alert(
-            'چوونەژوورەوە سەرکەوتوو نەبوو',
-            'ئیمەیڵ، ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە.'
-          );
-
-          return;
-        }
-
-        const user = data?.user;
-
-        if (!user) {
-          Alert.alert(
-            'هەڵە',
-            'نەتوانرا زانیاری بەکارهێنەر وەربگیرێت.'
-          );
-
-          return;
-        }
-
-        // =========================
-        // Get profile
-        // =========================
-
-        const { data: profile, error: profileError } =
-          await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-          console.log('PROFILE ERROR:', profileError);
-
-          await supabase.auth.signOut();
-
-          Alert.alert(
-            'هەڵە',
-            'پرۆفایلی بەکارهێنەر نەدۆزرایەوە.'
-          );
-
-          return;
-        }
-
-        // =========================
-        // Check username
-        // =========================
-
-        if (
-          (profile.username || '').toLowerCase() !==
-          cleanUsername.toLowerCase()
-        ) {
-          await supabase.auth.signOut();
-
-          Alert.alert(
-            'چوونەژوورەوە سەرکەوتوو نەبوو',
-            'ئیمەیڵ، ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە.'
-          );
-
-          return;
-        }
-
-        // =========================
-        // GO TO HOME
-        // =========================
-
-        navigation.replace('MainTabs');
-
-      } catch (error) {
-        console.log('LOGIN CATCH ERROR:', error);
-
-        Alert.alert(
-          'هەڵە',
-          'کێشەیەک ڕوویدا، تکایە دووبارە هەوڵ بدەرەوە.'
-        );
-      } finally {
-        setLoading(false);
-      }
-
-      return;
-    }
-
-    // =========================
-    // REGISTER
-    // =========================
-
-    if (!cleanFullName) {
-      Alert.alert(
-        'هەڵە',
-        'تکایە ناوی تەواوت بنووسە.'
-      );
-
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const { data, error } =
-        await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: {
-              first_name: cleanFullName,
-              last_name: '',
-              username: cleanUsername,
-            },
-          },
-        });
-
-      if (error) {
-        console.log('SIGNUP ERROR:', error);
-
-        Alert.alert(
-          'تۆمارکردن سەرکەوتوو نەبوو',
-          error.message ||
-            'کێشەیەک لە تۆمارکردندا ڕوویدا.'
-        );
-
-        return;
-      }
-
-      const user = data?.user;
-      const session = data?.session;
-
-      if (!user) {
-        Alert.alert(
-          'هەڵە',
-          'نەتوانرا هەژمارەکە دروست بکرێت.'
-        );
-
-        return;
-      }
-
-      // =========================
-      // Email confirmation must be OFF
-      // =========================
-
-      if (!session) {
-        Alert.alert(
-          'تۆمارکردن تەواو نەبوو',
-          'Email Confirmation لە Supabase هێشتا چالاکە. تکایە Confirm email دابخە.'
-        );
-
-        return;
-      }
-
-      // =========================
-      // GO TO HOME
-      // =========================
-
-      navigation.replace('MainTabs');
-
-    } catch (error) {
-      console.log('SIGNUP CATCH ERROR:', error);
-
-      Alert.alert(
-        'هەڵە',
-        'کێشەیەک لە تۆمارکردندا ڕوویدا.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+function MainTabs() {
+  const insets = useSafeAreaInsets();
 
   return (
-    <ImageBackground
-      source={require('../assets/bg-village.jpg')}
-      style={styles.background}
-      resizeMode="cover"
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: COLORS.tabBarBg,
+          borderTopColor: COLORS.cardBorder,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 6,
+        },
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textSub,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "700",
+        },
+      }}
     >
-      <View style={styles.overlay} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: "سەرەکی",
+          tabBarIcon: ({ color, size }) => (
+            <Home color={color} size={size} />
+          ),
+        }}
+      />
 
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={
-            Platform.OS === 'ios'
-              ? 'padding'
-              : undefined
-          }
-        >
-          <View style={styles.content}>
+      <Tab.Screen
+        name="Tree"
+        component={TreeScreen}
+        options={{
+          tabBarLabel: "شجرەنامە",
+          tabBarIcon: ({ color, size }) => (
+            <GitFork color={color} size={size} />
+          ),
+        }}
+      />
 
-            {/* =========================
-                HEADER
-            ========================== */}
+      <Tab.Screen
+        name="Writers"
+        component={WritersScreen}
+        options={{
+          tabBarLabel: "نووسەران",
+          tabBarIcon: ({ color, size }) => (
+            <PenTool color={color} size={size} />
+          ),
+        }}
+      />
 
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                دێهاتی بڵەسەن
-              </Text>
+      <Tab.Screen
+        name="News"
+        component={NewsScreen}
+        options={{
+  tabBarLabel: "هەواڵ",
+  tabBarIcon: ({ color, size }) => (
+    <Newspaper color={color} size={size} />
+  ),
+}}
+/>
 
-              <Text style={styles.subtitle}>
-                بەخێربێیت بۆ دێهاتی بڵەسەن
-              </Text>
-            </View>
-
-            {/* =========================
-                FORM
-            ========================== */}
-
-            <View style={styles.form}>
-
-              {/* Full Name - Register only */}
-              {!isLogin && (
-                <View style={styles.inputContainer}>
-                  <User
-                    size={21}
-                    color={COLORS?.primary || '#6b4f2a'}
-                  />
-
-                  <TextInput
-                    style={styles.input}
-                    placeholder="ناوی تەواو"
-                    placeholderTextColor="#888"
-                    value={fullName}
-                    onChangeText={setFullName}
-                    autoCapitalize="words"
-                  />
-                </View>
-              )}
-
-              {/* Email */}
-              <View style={styles.inputContainer}>
-                <Mail
-                  size={21}
-                  color={COLORS?.primary || '#6b4f2a'}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="ئیمەیڵ"
-                  placeholderTextColor="#888"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {/* Username */}
-              <View style={styles.inputContainer}>
-                <User
-                  size={21}
-                  color={COLORS?.primary || '#6b4f2a'}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="ناوی بەکارهێنەر"
-                  placeholderTextColor="#888"
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {/* Password */}
-              <View style={styles.inputContainer}>
-                <Lock
-                  size={21}
-                  color={COLORS?.primary || '#6b4f2a'}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="وشەی نهێنی"
-                  placeholderTextColor="#888"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-
-                <TouchableOpacity
-                  onPress={() =>
-                    setShowPassword(!showPassword)
-                  }
-                  style={styles.eyeButton}
-                >
-                  {showPassword ? (
-                    <EyeOff
-                      size={21}
-                      color="#777"
-                    />
-                  ) : (
-                    <Eye
-                      size={21}
-                      color="#777"
-                    />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* =========================
-                  MAIN BUTTON
-              ========================== */}
-
-              <TouchableOpacity
-                style={[
-                  styles.mainButton,
-                  loading && styles.disabledButton,
-                ]}
-                onPress={handleAuth}
-                disabled={loading}
-              >
-                <Text style={styles.mainButtonText}>
-                  {loading
-                    ? 'تکایە چاوەڕوان بە...'
-                    : isLogin
-                    ? 'چوونەژوورەوە'
-                    : 'تۆمارکردن'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* =========================
-                  SWITCH LOGIN / REGISTER
-              ========================== */}
-
-              <View style={styles.switchContainer}>
-                <Text style={styles.switchText}>
-                  {isLogin
-                    ? 'هەژمارت نییە؟'
-                    : 'پێشتر هەژمارت هەیە؟'}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsLogin(!isLogin);
-                    setPassword('');
-                  }}
-                >
-                  <Text style={styles.switchButton}>
-                    {isLogin
-                      ? 'تۆمارکردن'
-                      : 'چوونەژوورەوە'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ImageBackground>
+      <Tab.Screen
+        name="BllasanAbout"
+        component={BllasanAboutScreen}
+        options={{
+          tabBarLabel: "بڵەسەن",
+          tabBarIcon: ({ color, size }) => (
+            <Home color={color} size={size} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
+function RootStack({ isLoggedIn }) {
+  return (
+    <Stack.Navigator
+      id="root"
+      initialRouteName={isLoggedIn ? "MainTabs" : "Welcome"}
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen
+        name="Welcome"
+        component={WelcomeScreen}
+        options={{ headerShown: false }}
+      />
 
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.30)',
-  },
+      <Stack.Screen
+        name="UserLogin"
+        component={UserLoginScreen}
+        options={{ headerShown: false }}
+      />
 
-  safeArea: {
-    flex: 1,
-  },
+      <Stack.Screen
+        name="UserSignUp"
+        component={UserSignUpScreen}
+        options={{ headerShown: false }}
+      />
 
-  container: {
-    flex: 1,
-  },
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
 
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
+      <Stack.Screen
+        name="Contact"
+        component={ContactScreen}
+        options={{ headerShown: false }}
+      />
 
-  header: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
+      <Stack.Screen
+        name="Gallery"
+        component={GalleryScreen}
+        options={{ headerShown: false }}
+      />
 
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: {
-      width: 1,
-      height: 2,
-    },
-    textShadowRadius: 4,
-  },
+      <Stack.Screen name="Memorial" options={{ headerShown: false }}>
+        {(props) => <MemorialScreen {...props} isAdmin={false} />}
+      </Stack.Screen>
 
-  subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: {
-      width: 1,
-      height: 1,
-    },
-    textShadowRadius: 3,
-  },
+      <Stack.Screen
+        name="AdminPanel"
+        component={LoginAdminPanelScreen}
+        options={{ headerShown: false }}
+      />
 
-  form: {
-    width: '100%',
-  },
+      <Stack.Screen
+        name="AdminPanelHome"
+        component={AdminPanelScreen}
+        options={{ headerShown: false }}
+      />
 
-  inputContainer: {
-    height: 56,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 13,
-  },
+      <Stack.Screen
+        name="AdminManagement"
+        component={AdminManagementScreen}
+        options={{ headerShown: false }}
+      />
 
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#222',
-    marginLeft: 10,
-    textAlign: 'right',
-  },
+      <Stack.Screen
+        name="ManageTree"
+        component={ManageTreeScreen}
+        options={{ headerShown: false }}
+      />
 
-  eyeButton: {
-    padding: 5,
-  },
+      <Stack.Screen
+        name="ManageWriters"
+        component={ManageWritersScreen}
+        options={{ headerShown: false }}
+      />
 
-  mainButton: {
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: COLORS?.primary || '#6b4f2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
+      <Stack.Screen
+        name="ManageNews"
+        component={ManageNewsScreen}
+        options={{ headerShown: false }}
+      />
 
-  disabledButton: {
-    opacity: 0.65,
-  },
+      <Stack.Screen
+        name="ManageGallery"
+        component={ManageGalleryScreen}
+        options={{ headerShown: false }}
+      />
 
-  mainButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+      <Stack.Screen
+        name="ManageGalleryScreen"
+        component={ManageGalleryScreen}
+        options={{ headerShown: false }}
+      />
 
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    gap: 6,
-  },
+      <Stack.Screen name="ManageObituaries" options={{ headerShown: false }}>
+        {(props) => <MemorialScreen {...props} isAdmin={true} />}
+      </Stack.Screen>
 
-  switchText: {
-    color: '#fff',
-    fontSize: 15,
-  },
+      <Stack.Screen name="ManageDirectory" options={{ headerShown: false }}>
+        {(props) => <ContactScreen {...props} isAdmin={true} />}
+      </Stack.Screen>
 
-  switchButton: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
-  },
-});
+      <Stack.Screen name="AdminMunicipality" options={{ headerShown: false }}>
+        {(props) => (
+          <MunicipalityScreen {...props} isAdmin={true} />
+        )}
+      </Stack.Screen>
+
+      <Stack.Screen
+        name="AuthScreen"
+        component={AuthScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="WriterProfile"
+        component={WriterProfileScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="WriterProfileCreate"
+        component={WriterProfileCreateScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="WriterDashboard"
+        component={WriterDashboardScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ArticleDetails"
+        component={ArticleDetailsScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="CreateArticle"
+        component={CreateArticleScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="EditArticle"
+        component={EditArticleScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ManageQuickNews"
+        component={ManageQuickNewsScreen}
+      />
+
+      <Stack.Screen
+        name="Weather"
+        component={WeatherScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ManageAds"
+        component={ManageAdsScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="Municipality"
+        component={MunicipalityScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="AdContact"
+        component={AdContactScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ManageBllasanAbout"
+        component={ManageBllasanAboutScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="MunicipalitySection"
+        component={MunicipalitySectionScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: COLORS.background,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <ActivityIndicator
+        size="large"
+        color={COLORS.primary}
+      />
+    </View>
+  );
+}
+
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    // 1. Check saved Supabase session when app starts
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
+        setLoading(false);
+      }
+    });
+
+    // 2. Listen for login / logout / session changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (mounted) {
+          setSession(session);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={COLORS.background}
+        />
+        <SafeAreaView
+          style={{ flex: 1 }}
+          edges={["top"]}
+        >
+          <LoadingScreen />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  return (
+    <SafeAreaProvider>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.background}
+      />
+
+      <SafeAreaView
+        style={{ flex: 1 }}
+        edges={["top"]}
+      >
+        <NavigationContainer>
+          <RootStack
+            key={session ? "logged-in" : "logged-out"}
+            isLoggedIn={!!session}
+          />
+        </NavigationContainer>
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
