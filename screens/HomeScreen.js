@@ -7,12 +7,12 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+ 
   Image,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Ionicons,
   FontAwesome5,
@@ -545,7 +545,6 @@ export default function HomeScreen({ navigation }) {
             color="#f59e0b"
           />
         </TouchableOpacity>
-        
       </ScrollView>
     </SafeAreaView>
   );
