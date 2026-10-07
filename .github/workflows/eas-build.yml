@@ -1,4 +1,5 @@
-﻿name: EAS Build
+
+name: EAS Build
 
 on:
   workflow_dispatch:
@@ -30,6 +31,19 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build Android app with EAS
-        run: npx eas-cli@24.8.0 build --platform android --profile preview --non-interactive --no-wait
+        run: npx eas-cli@24.8.0 build --platform android --profile preview --non-interactive --wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download APK
+        run: npx eas-cli@24.8.0 build:download --platform android --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Upload APK to GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: blesanapp-android-apk
+          path: "*.apk"
+          if-no-files-found: error
+
