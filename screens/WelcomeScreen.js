@@ -1,575 +1,377 @@
+import React from "react";
 
-import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  ImageBackground,
-  TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  User,
-} from 'lucide-react-native';
+  SafeAreaView,
+  StatusBar,
+  Image,
+  Dimensions,
+} from "react-native";
 
-import { COLORS } from '../constants/theme';
-import { supabase } from '../lib/supabase';
+const { width, height } = Dimensions.get("window");
+
+const WELCOME_IMAGE =
+  "https://cdn.imgurl.ir/uploads/a966067_IMG_20230318_135501_676.jpg";
 
 export default function WelcomeScreen({ navigation }) {
-  const [isLogin, setIsLogin] = useState(true);
-
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanUsername = username.trim();
-  const cleanFullName = fullName.trim();
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const usernameRegex = /^[A-Za-z0-9_.]+$/;
-
-  const handleAuth = async () => {
-    if (loading) return;
-
-    // =========================
-    // Validation
-    // =========================
-
-    if (!cleanEmail) {
-      Alert.alert('هەڵە', 'تکایە ئیمەیڵەکەت بنووسە.');
-      return;
-    }
-
-    if (!emailRegex.test(cleanEmail)) {
-      Alert.alert('هەڵە', 'تکایە ئیمەیڵێکی دروست بنووسە.');
-      return;
-    }
-
-    if (!cleanUsername) {
-      Alert.alert('هەڵە', 'تکایە ناوی بەکارهێنەر بنووسە.');
-      return;
-    }
-
-    if (!usernameRegex.test(cleanUsername)) {
-      Alert.alert(
-        'هەڵە',
-        'ناوی بەکارهێنەر تەنها دەتوانێت پیتی ئینگلیزی، ژمارە، _ یان . لەخۆبگرێت.'
-      );
-      return;
-    }
-
-    if (!password) {
-      Alert.alert('هەڵە', 'تکایە وشەی نهێنی بنووسە.');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert(
-        'هەڵە',
-        'وشەی نهێنی دەبێت لانیکەم ٦ پیت بێت.'
-      );
-      return;
-    }
-
-    // =========================
-    // LOGIN
-    // =========================
-
-    if (isLogin) {
-      try {
-        setLoading(true);
-
-        const { data, error } =
-          await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-          });
-
-        if (error) {
-          console.log('LOGIN ERROR:', error);
-
-          Alert.alert(
-            'چوونەژوورەوە سەرکەوتوو نەبوو',
-            'ئیمەیڵ، ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە.'
-          );
-
-          return;
-        }
-
-        const user = data?.user;
-
-        if (!user) {
-          Alert.alert(
-            'هەڵە',
-            'نەتوانرا زانیاری بەکارهێنەر وەربگیرێت.'
-          );
-
-          return;
-        }
-
-        // =========================
-        // Get profile
-        // =========================
-
-        const { data: profile, error: profileError } =
-          await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-          console.log('PROFILE ERROR:', profileError);
-
-          await supabase.auth.signOut();
-
-          Alert.alert(
-            'هەڵە',
-            'پرۆفایلی بەکارهێنەر نەدۆزرایەوە.'
-          );
-
-          return;
-        }
-
-        // =========================
-        // Check username
-        // =========================
-
-        if (
-          (profile.username || '').toLowerCase() !==
-          cleanUsername.toLowerCase()
-        ) {
-          await supabase.auth.signOut();
-
-          Alert.alert(
-            'چوونەژوورەوە سەرکەوتوو نەبوو',
-            'ئیمەیڵ، ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە.'
-          );
-
-          return;
-        }
-
-        // =========================
-        // GO TO HOME
-        // =========================
-
-        navigation.replace('MainTabs');
-
-      } catch (error) {
-        console.log('LOGIN CATCH ERROR:', error);
-
-        Alert.alert(
-          'هەڵە',
-          'کێشەیەک ڕوویدا، تکایە دووبارە هەوڵ بدەرەوە.'
-        );
-      } finally {
-        setLoading(false);
-      }
-
-      return;
-    }
-
-    // =========================
-    // REGISTER
-    // =========================
-
-    if (!cleanFullName) {
-      Alert.alert(
-        'هەڵە',
-        'تکایە ناوی تەواوت بنووسە.'
-      );
-
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const { data, error } =
-        await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: {
-              first_name: cleanFullName,
-              last_name: '',
-              username: cleanUsername,
-            },
-          },
-        });
-
-      if (error) {
-        console.log('SIGNUP ERROR:', error);
-
-        Alert.alert(
-          'تۆمارکردن سەرکەوتوو نەبوو',
-          error.message ||
-            'کێشەیەک لە تۆمارکردندا ڕوویدا.'
-        );
-
-        return;
-      }
-
-      const user = data?.user;
-      const session = data?.session;
-
-      if (!user) {
-        Alert.alert(
-          'هەڵە',
-          'نەتوانرا هەژمارەکە دروست بکرێت.'
-        );
-
-        return;
-      }
-
-      // =========================
-      // Email confirmation must be OFF
-      // =========================
-
-      if (!session) {
-        Alert.alert(
-          'تۆمارکردن تەواو نەبوو',
-          'Email Confirmation لە Supabase هێشتا چالاکە. تکایە Confirm email دابخە.'
-        );
-
-        return;
-      }
-
-      // =========================
-      // GO TO HOME
-      // =========================
-
-      navigation.replace('MainTabs');
-
-    } catch (error) {
-      console.log('SIGNUP CATCH ERROR:', error);
-
-      Alert.alert(
-        'هەڵە',
-        'کێشەیەک لە تۆمارکردندا ڕوویدا.'
-      );
-    } finally {
-      setLoading(false);
-    }
+  const handleStart = () => {
+    navigation.replace("MainTabs");
   };
 
   return (
-    <ImageBackground
-      source={require('../assets/bg-village.jpg')}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay} />
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#000"
+        translucent
+      />
+
+      {/* ================================================ */}
+      {/* BACKGROUND IMAGE */}
+      {/* ================================================ */}
+
+      <Image
+        source={{ uri: WELCOME_IMAGE }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
+
+      {/* ================================================ */}
+      {/* OVERLAY */}
+      {/* ================================================ */}
+
+      <View style={styles.darkOverlay} />
+
+      <View style={styles.topOverlay} />
+
+      <View style={styles.bottomOverlay} />
+
+      {/* ================================================ */}
+      {/* CONTENT */}
+      {/* ================================================ */}
 
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={
-            Platform.OS === 'ios'
-              ? 'padding'
-              : undefined
-          }
-        >
-          <View style={styles.content}>
+        <View style={styles.content}>
 
-            {/* =========================
-                HEADER
-            ========================== */}
+          {/* ============================================ */}
+          {/* APP LOGO */}
+          {/* ============================================ */}
 
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                دێهاتی بڵەسەن
-              </Text>
-
-              <Text style={styles.subtitle}>
-                بەخێربێیت بۆ دێهاتی بڵەسەن
+          <View style={styles.logoArea}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoLetter}>
+                B
               </Text>
             </View>
 
-            {/* =========================
-                FORM
-            ========================== */}
+            <View style={styles.logoTextArea}>
+              <Text style={styles.logoText}>
+                APP
+              </Text>
 
-            <View style={styles.form}>
-
-              {/* Full Name - Register only */}
-              {!isLogin && (
-                <View style={styles.inputContainer}>
-                  <User
-                    size={21}
-                    color={COLORS?.primary || '#6b4f2a'}
-                  />
-
-                  <TextInput
-                    style={styles.input}
-                    placeholder="ناوی تەواو"
-                    placeholderTextColor="#888"
-                    value={fullName}
-                    onChangeText={setFullName}
-                    autoCapitalize="words"
-                  />
-                </View>
-              )}
-
-              {/* Email */}
-              <View style={styles.inputContainer}>
-                <Mail
-                  size={21}
-                  color={COLORS?.primary || '#6b4f2a'}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="ئیمەیڵ"
-                  placeholderTextColor="#888"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {/* Username */}
-              <View style={styles.inputContainer}>
-                <User
-                  size={21}
-                  color={COLORS?.primary || '#6b4f2a'}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="ناوی بەکارهێنەر"
-                  placeholderTextColor="#888"
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {/* Password */}
-              <View style={styles.inputContainer}>
-                <Lock
-                  size={21}
-                  color={COLORS?.primary || '#6b4f2a'}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="وشەی نهێنی"
-                  placeholderTextColor="#888"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-
-                <TouchableOpacity
-                  onPress={() =>
-                    setShowPassword(!showPassword)
-                  }
-                  style={styles.eyeButton}
-                >
-                  {showPassword ? (
-                    <EyeOff
-                      size={21}
-                      color="#777"
-                    />
-                  ) : (
-                    <Eye
-                      size={21}
-                      color="#777"
-                    />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* =========================
-                  MAIN BUTTON
-              ========================== */}
-
-              <TouchableOpacity
-                style={[
-                  styles.mainButton,
-                  loading && styles.disabledButton,
-                ]}
-                onPress={handleAuth}
-                disabled={loading}
-              >
-                <Text style={styles.mainButtonText}>
-                  {loading
-                    ? 'تکایە چاوەڕوان بە...'
-                    : isLogin
-                    ? 'چوونەژوورەوە'
-                    : 'تۆمارکردن'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* =========================
-                  SWITCH LOGIN / REGISTER
-              ========================== */}
-
-              <View style={styles.switchContainer}>
-                <Text style={styles.switchText}>
-                  {isLogin
-                    ? 'هەژمارت نییە؟'
-                    : 'پێشتر هەژمارت هەیە؟'}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsLogin(!isLogin);
-                    setPassword('');
-                  }}
-                >
-                  <Text style={styles.switchButton}>
-                    {isLogin
-                      ? 'تۆمارکردن'
-                      : 'چوونەژوورەوە'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
+              <Text style={styles.logoName}>
+                BLLASAN
+              </Text>
             </View>
           </View>
-        </KeyboardAvoidingView>
+
+
+      
+
+
+          {/* ============================================ */}
+          {/* BOTTOM MESSAGE + BUTTON */}
+          {/* ============================================ */}
+
+          <View style={styles.bottomSection}>
+
+            <View style={styles.textBox}>
+              <Text style={styles.description}>
+                شوێنێک بۆ پاراستنی مێژوو،
+                {"\n"}
+                وێنە و بیرەوەرییەکانی بڵەسەن
+              </Text>
+            </View>
+
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+
+              <View style={styles.dividerDot} />
+
+              <View style={styles.dividerLine} />
+            </View>
+
+
+            {/* START BUTTON */}
+
+            <TouchableOpacity
+              style={styles.startButton}
+              activeOpacity={0.88}
+              onPress={handleStart}
+            >
+              <Text style={styles.startButtonText}>
+                دەستپێکردن
+              </Text>
+            </TouchableOpacity>
+
+
+            <Text style={styles.footerText}>
+              بۆ ئێستا • بۆ سبەی • بۆ نەوەکانمان
+            </Text>
+
+          </View>
+
+        </View>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
 
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.30)',
+// =======================================================
+// STYLES
+// =======================================================
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
   },
 
   safeArea: {
     flex: 1,
   },
 
-  container: {
-    flex: 1,
+  // =====================================================
+  // IMAGE
+  // =====================================================
+
+  backgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width,
+    height,
   },
+
+  // =====================================================
+  // OVERLAY
+  // =====================================================
+
+  darkOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(4,9,15,0.28)",
+  },
+
+  topOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.30,
+    backgroundColor: "rgba(3,8,13,0.20)",
+  },
+
+  bottomOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.42,
+    backgroundColor: "rgba(3,8,13,0.38)",
+  },
+
+  // =====================================================
+  // CONTENT
+  // =====================================================
 
   content: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 18,
+    justifyContent: "space-between",
   },
 
-  header: {
-    alignItems: 'center',
-    marginBottom: 30,
+  // =====================================================
+  // LOGO
+  // =====================================================
+
+  logoArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    marginTop: 2,
   },
 
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: {
-      width: 1,
-      height: 2,
+  logoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F59E0B",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
     },
-    textShadowRadius: 4,
+    shadowOpacity: 0.30,
+    shadowRadius: 5,
+    elevation: 5,
   },
 
-  subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.4)',
+  logoLetter: {
+    color: "#0B1329",
+    fontSize: 23,
+    fontWeight: "900",
+  },
+
+  logoTextArea: {
+    marginLeft: 9,
+  },
+
+  logoText: {
+    color: "#F59E0B",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+
+  logoName: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: 1.4,
+  },
+
+  // =====================================================
+  // TITLE
+  // =====================================================
+
+ 
+
+  // =====================================================
+  // BOTTOM SECTION
+  // =====================================================
+
+  bottomSection: {
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 2,
+  },
+
+  textBox: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "rgba(11,19,31,0.46)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 17,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    marginBottom: 13,
+  },
+
+  description: {
+    color: "#F8FAFC",
+    fontSize: 13,
+    lineHeight: 22,
+    textAlign: "center",
+    fontWeight: "500",
+
+    textShadowColor: "rgba(0,0,0,0.60)",
     textShadowOffset: {
-      width: 1,
+      width: 0,
       height: 1,
     },
     textShadowRadius: 3,
   },
 
-  form: {
-    width: '100%',
+  // =====================================================
+  // DIVIDER
+  // =====================================================
+
+  divider: {
+    width: "55%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
   },
 
-  inputContainer: {
-    height: 56,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 13,
-  },
-
-  input: {
+  dividerLine: {
     flex: 1,
-    fontSize: 16,
-    color: '#222',
-    marginLeft: 10,
-    textAlign: 'right',
+    height: 1,
+    backgroundColor: "rgba(245,158,11,0.48)",
   },
 
-  eyeButton: {
-    padding: 5,
+  dividerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#F59E0B",
+    marginHorizontal: 8,
   },
 
-  mainButton: {
+  // =====================================================
+  // START BUTTON
+  // =====================================================
+
+  startButton: {
+    width: "100%",
+    maxWidth: 420,
     height: 56,
-    borderRadius: 14,
-    backgroundColor: COLORS?.primary || '#6b4f2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
+    borderRadius: 15,
+    backgroundColor: "#F59E0B",
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 6,
   },
 
-  disabledButton: {
-    opacity: 0.65,
-  },
-
-  mainButtonText: {
-    color: '#fff',
+  startButtonText: {
+    color: "#0B1329",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "900",
   },
 
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    gap: 6,
-  },
+  // =====================================================
+  // FOOTER
+  // =====================================================
 
-  switchText: {
-    color: '#fff',
-    fontSize: 15,
-  },
+  footerText: {
+    color: "#E2E8F0",
+    textAlign: "center",
+    fontSize: 10.5,
+    marginTop: 10,
 
-  switchButton: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
+    textShadowColor: "rgba(0,0,0,0.75)",
+    textShadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    textShadowRadius: 3,
   },
 });
