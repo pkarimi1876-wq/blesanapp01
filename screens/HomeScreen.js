@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from "react";
 
 import {
@@ -7,12 +6,11 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
- 
-  Image,
+  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import {
   Ionicons,
   FontAwesome5,
@@ -25,22 +23,43 @@ import AdBanner from "../Components/AdBanner";
 import AdminAccessButton from "../Components/AdminAccesButton.js";
 import { supabase } from "../lib/supabase";
 
+
+// =====================================================
+// Home Screen
+// =====================================================
 export default function HomeScreen({ navigation }) {
+
   // =====================================================
   // Quick News State
   // =====================================================
-
   const [quickNews, setQuickNews] = useState(null);
+
   const [loadingQuickNews, setLoadingQuickNews] =
     useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+
+
+  // =====================================================
+  // Weather State
+  // =====================================================
+  const [todayWeather, setTodayWeather] = useState(null);
+
+  const [loadingWeather, setLoadingWeather] =
+    useState(true);
+
+
+  // =====================================================
+  // Refresh
+  // =====================================================
+  const [refreshing, setRefreshing] =
+    useState(false);
+
 
   // =====================================================
   // Fetch Quick News From Supabase
   // =====================================================
-
   const fetchQuickNews = async () => {
     try {
+
       setLoadingQuickNews(true);
 
       const { data, error } = await supabase
@@ -61,19 +80,167 @@ export default function HomeScreen({ navigation }) {
       }
 
       setQuickNews(data?.[0] || null);
+
     } catch (error) {
+
       console.log("Quick News Error:", error);
+
       setQuickNews(null);
+
     } finally {
+
       setLoadingQuickNews(false);
+
     }
   };
+
+
+  // =====================================================
+  // Fetch Today's Weather
+  // =====================================================
+  const fetchTodayWeather = async () => {
+    try {
+
+      setLoadingWeather(true);
+
+      const url =
+        "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=35.9942" +
+        "&longitude=45.66" +
+        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+        "&timezone=auto";
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Weather request failed");
+      }
+
+      const data = await response.json();
+
+      setTodayWeather(data);
+
+    } catch (error) {
+
+      console.log(
+        "Today Weather Error:",
+        error
+      );
+
+      setTodayWeather(null);
+
+    } finally {
+
+      setLoadingWeather(false);
+
+    }
+  };
+
+
+  // =====================================================
+  // Weather Description
+  // =====================================================
+  const getWeatherDescription = (code) => {
+
+    if (code === 0) {
+      return "ئاسمان ڕوونە";
+    }
+
+    if (code === 1) {
+      return "زۆر کەم هەورە";
+    }
+
+    if (code === 2) {
+      return "هەوری کەمە";
+    }
+
+    if (code === 3) {
+      return "هەوری زۆرە";
+    }
+
+    if ([45, 48].includes(code)) {
+      return "تەمی هەیە";
+    }
+
+    if ([51, 53, 55].includes(code)) {
+      return "بارانی سووک";
+    }
+
+    if ([56, 57].includes(code)) {
+      return "بارانی سارد";
+    }
+
+    if ([61, 63, 65].includes(code)) {
+      return "باران";
+    }
+
+    if ([66, 67].includes(code)) {
+      return "بارانی سارد";
+    }
+
+    if ([71, 73, 75, 77].includes(code)) {
+      return "بەفر";
+    }
+
+    if ([80, 81, 82].includes(code)) {
+      return "ڕەشەبا و باران";
+    }
+
+    if ([85, 86].includes(code)) {
+      return "ڕەشەبا و بەفر";
+    }
+
+    if (code === 95) {
+      return "زریان";
+    }
+
+    if ([96, 99].includes(code)) {
+      return "زریان و تگر";
+    }
+
+    return "کەشوهەوا";
+  };
+
+
+  // =====================================================
+  // Weather Icon
+  // =====================================================
+  const getWeatherIcon = (code) => {
+
+    if (code === 0 || code === 1) {
+      return "weather-sunny";
+    }
+
+    if (code === 2) {
+      return "weather-partly-cloudy";
+    }
+
+    if (code === 3) {
+      return "weather-cloudy";
+    }
+
+    if ([45, 48].includes(code)) {
+      return "weather-fog";
+    }
+
+    if ([71, 73, 75, 77, 85, 86].includes(code)) {
+      return "weather-snowy";
+    }
+
+    if ([95, 96, 99].includes(code)) {
+      return "weather-lightning-rainy";
+    }
+
+    return "weather-rainy";
+  };
+
 
   // =====================================================
   // Dynamic Quick News Theme
   // =====================================================
-
   const getQuickNewsStyles = () => {
+
     const type = quickNews?.news_type;
 
     if (type === "red") {
@@ -102,58 +269,75 @@ export default function HomeScreen({ navigation }) {
     };
   };
 
-  const currentTheme = getQuickNewsStyles();
+
+  const currentTheme =
+    getQuickNewsStyles();
+
 
   // =====================================================
-  // Focus & Refresh
+  // Focus
   // =====================================================
-
   useFocusEffect(
     useCallback(() => {
+
       fetchQuickNews();
+      fetchTodayWeather();
+
     }, [])
   );
 
+
+  // =====================================================
+  // Pull To Refresh
+  // =====================================================
   const onRefresh = async () => {
+
     setRefreshing(true);
-    await fetchQuickNews();
+
+    await Promise.all([
+      fetchQuickNews(),
+      fetchTodayWeather(),
+    ]);
+
     setRefreshing(false);
   };
+
 
   // =====================================================
   // Navigation Handler
   // =====================================================
-
   const navigateTo = (screenName) => {
+
     const rootNavigation =
       navigation.getParent("root") ||
       navigation.getParent();
 
     if (rootNavigation) {
-      rootNavigation.navigate(screenName);
+
+      rootNavigation.navigate(
+        screenName
+      );
+
     } else {
-      navigation.navigate(screenName);
+
+      navigation.navigate(
+        screenName
+      );
+
     }
   };
 
-  // =====================================================
-  // Weather Navigation
-  // =====================================================
-
-  const openWeather = () => {
-    navigateTo("Weather");
-  };
 
   // =====================================================
   // Render
   // =====================================================
-
   return (
     <SafeAreaView style={styles.container}>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 30,
+          paddingBottom: 20,
         }}
         refreshControl={
           <RefreshControl
@@ -163,58 +347,37 @@ export default function HomeScreen({ navigation }) {
           />
         }
       >
+
         {/* =====================================================
             Header
         ===================================================== */}
 
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.profileBtn}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={{
-                uri:
-                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200",
-              }}
-              style={styles.profileImg}
-            />
-          </TouchableOpacity>
+
+          <View style={styles.headerSpacer} />
 
           <Text style={styles.headerTitle}>
             ئاوایی بڵەسەن
           </Text>
 
           <View style={styles.headerActions}>
+
             <AdminAccessButton
               navigation={navigation}
               compact
             />
 
-            <TouchableOpacity
-              style={styles.notificationBtn}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#fff"
-              />
-
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  3
-                </Text>
-              </View>
-            </TouchableOpacity>
           </View>
+
         </View>
 
+
         {/* =====================================================
-            Quick News Section
+            Quick News
         ===================================================== */}
 
         {loadingQuickNews ? (
+
           <View
             style={[
               styles.alertCard,
@@ -224,7 +387,9 @@ export default function HomeScreen({ navigation }) {
               },
             ]}
           >
+
             <View style={styles.alertHeader}>
+
               <Ionicons
                 name="megaphone"
                 size={28}
@@ -234,9 +399,12 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.alertTitle}>
                 هەواڵی خێرا
               </Text>
+
             </View>
 
+
             <View style={styles.alertTimeRow}>
+
               <ActivityIndicator
                 size="small"
                 color="#f59e0b"
@@ -252,9 +420,13 @@ export default function HomeScreen({ navigation }) {
               >
                 هەواڵەکە دەهێنرێت...
               </Text>
+
             </View>
+
           </View>
+
         ) : !quickNews ? (
+
           <View
             style={[
               styles.alertCard,
@@ -264,7 +436,9 @@ export default function HomeScreen({ navigation }) {
               },
             ]}
           >
+
             <View style={styles.alertHeader}>
+
               <Ionicons
                 name="megaphone-outline"
                 size={28}
@@ -274,9 +448,12 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.alertTitle}>
                 هەواڵی خێرا
               </Text>
+
             </View>
 
+
             <View style={styles.alertTimeRow}>
+
               <Ionicons
                 name="information-circle-outline"
                 size={16}
@@ -296,9 +473,13 @@ export default function HomeScreen({ navigation }) {
               >
                 ئێستا هیچ هەواڵێکی خێرا نییە
               </Text>
+
             </View>
+
           </View>
+
         ) : (
+
           <View
             style={[
               styles.alertCard,
@@ -308,7 +489,9 @@ export default function HomeScreen({ navigation }) {
               },
             ]}
           >
+
             <View style={styles.alertHeader}>
+
               <Ionicons
                 name="megaphone"
                 size={28}
@@ -321,10 +504,14 @@ export default function HomeScreen({ navigation }) {
               >
                 {quickNews.title}
               </Text>
+
             </View>
 
+
             {quickNews.content ? (
+
               <View style={styles.alertTimeRow}>
+
                 <Text
                   style={[
                     styles.alertTimeText,
@@ -336,16 +523,21 @@ export default function HomeScreen({ navigation }) {
                 >
                   {quickNews.content}
                 </Text>
+
               </View>
+
             ) : null}
 
+
             <View style={styles.alertFooterRow}>
+
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                 }}
               >
+
                 <Ionicons
                   name="flash-outline"
                   size={14}
@@ -355,33 +547,47 @@ export default function HomeScreen({ navigation }) {
                   }}
                 />
 
-                <Text style={styles.alertUpdateText}>
+                <Text
+                  style={
+                    styles.alertUpdateText
+                  }
+                >
                   هەواڵی خێرا⚡
                 </Text>
+
               </View>
 
+
               {quickNews.news_date ? (
+
                 <Text
                   style={[
                     styles.alertDateText,
                     {
-                      color: currentTheme.accent,
+                      color:
+                        currentTheme.accent,
                     },
                   ]}
                 >
                   {quickNews.news_date}
                 </Text>
+
               ) : null}
+
             </View>
+
           </View>
+
         )}
 
+
         {/* =====================================================
-            Quick Access Buttons
+            Quick Access
         ===================================================== */}
 
-        <View style={styles.quickAccessRow}>
-          {/* شەجەرەنامە */}
+        <View
+          style={styles.quickAccessRow}
+        >
 
           <TouchableOpacity
             style={styles.quickCard}
@@ -390,18 +596,23 @@ export default function HomeScreen({ navigation }) {
             }
             activeOpacity={0.8}
           >
+
             <FontAwesome5
               name="tree"
               size={22}
               color="#f59e0b"
             />
 
-            <Text style={styles.quickCardText}>
+            <Text
+              style={
+                styles.quickCardText
+              }
+            >
               شەجەرەنامە
             </Text>
+
           </TouchableOpacity>
 
-          {/* نووسەرانی بڵەسەن */}
 
           <TouchableOpacity
             style={styles.quickCard}
@@ -410,18 +621,23 @@ export default function HomeScreen({ navigation }) {
             }
             activeOpacity={0.8}
           >
+
             <FontAwesome5
               name="pen"
               size={20}
               color="#f59e0b"
             />
 
-            <Text style={styles.quickCardText}>
+            <Text
+              style={
+                styles.quickCardText
+              }
+            >
               نووسەرانی بڵەسەن
             </Text>
+
           </TouchableOpacity>
 
-          {/* وێنەخانە */}
 
           <TouchableOpacity
             style={styles.quickCard}
@@ -430,139 +646,463 @@ export default function HomeScreen({ navigation }) {
             }
             activeOpacity={0.8}
           >
+
             <Ionicons
               name="images"
               size={22}
               color="#f59e0b"
             />
 
-            <Text style={styles.quickCardText}>
+            <Text
+              style={
+                styles.quickCardText
+              }
+            >
               وێنەخانە
             </Text>
+
           </TouchableOpacity>
 
-          {/* ژمارە تەلەفۆنەکان */}
 
           <TouchableOpacity
             style={styles.quickCard}
             onPress={() =>
-              navigation.navigate("Contact")
+              navigation.navigate(
+                "Contact"
+              )
             }
             activeOpacity={0.8}
           >
+
             <Ionicons
               name="call"
               size={22}
               color="#f59e0b"
             />
 
-            <Text style={styles.quickCardText}>
+            <Text
+              style={
+                styles.quickCardText
+              }
+            >
               ژمارە تەلەفۆنەکان
             </Text>
+
           </TouchableOpacity>
 
-          {/* پرسە و سەرەخۆشی */}
 
           <TouchableOpacity
             style={styles.quickCard}
             onPress={() =>
-              navigation.navigate("Memorial")
+              navigation.navigate(
+                "Memorial"
+              )
             }
             activeOpacity={0.8}
           >
+
             <MaterialCommunityIcons
               name="candle"
               size={24}
               color="#f59e0b"
             />
 
-            <Text style={styles.quickCardText}>
+            <Text
+              style={
+                styles.quickCardText
+              }
+            >
               پرسە و سەرەخۆشی
             </Text>
+
           </TouchableOpacity>
 
-          {/* دهیاری */}
 
           <TouchableOpacity
             style={styles.quickCard}
             onPress={() =>
-              navigateTo("Municipality")
+              navigateTo(
+                "Municipality"
+              )
             }
             activeOpacity={0.8}
           >
+
             <MaterialCommunityIcons
               name="office-building"
               size={23}
               color="#f59e0b"
             />
 
-            <Text style={styles.quickCardText}>
+            <Text
+              style={
+                styles.quickCardText
+              }
+            >
               دهیاری
             </Text>
+
           </TouchableOpacity>
+
         </View>
+
 
         {/* =====================================================
             Advertisement
         ===================================================== */}
 
-        <AdBanner navigation={navigation} />
+        <AdBanner
+          navigation={navigation}
+        />
+
 
         {/* =====================================================
-            Weather Card - کادری سەربەخۆ
+            Today's Weather - Compact
         ===================================================== */}
 
         <TouchableOpacity
           style={styles.weatherCard}
-          onPress={openWeather}
-          activeOpacity={0.85}
+          onPress={() =>
+            navigateTo("Weather")
+          }
+          activeOpacity={0.88}
         >
-          <View style={styles.weatherIconBox}>
-            <MaterialCommunityIcons
-              name="weather-partly-cloudy"
-              size={38}
-              color="#f59e0b"
-            />
-          </View>
 
-          <View style={styles.weatherContent}>
-            <Text style={styles.weatherTitle}>
-              کەشناسی بڵەسەن
-            </Text>
+          {loadingWeather ? (
 
-            <Text style={styles.weatherSubtitle}>
-              ابوالحسن، بانە، کوردستان
-            </Text>
+            <View
+              style={
+                styles.weatherLoading
+              }
+            >
 
-            <Text style={styles.weatherMore}>
-              بینینی کەشناسی و پێشبینی ٧ ڕۆژ
-            </Text>
-          </View>
+              <ActivityIndicator
+                size="small"
+                color="#f59e0b"
+              />
 
-          <Ionicons
-            name="chevron-back"
-            size={22}
-            color="#f59e0b"
-          />
+              <Text
+                style={
+                  styles.weatherLoadingText
+                }
+              >
+                کەشوهەوا دەهێنرێت...
+              </Text>
+
+            </View>
+
+          ) : !todayWeather ? (
+
+            <View
+              style={
+                styles.weatherError
+              }
+            >
+
+              <MaterialCommunityIcons
+                name="weather-cloudy-alert"
+                size={34}
+                color="#f59e0b"
+              />
+
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: "flex-end",
+                }}
+              >
+
+                <Text
+                  style={
+                    styles.weatherCardTitle
+                  }
+                >
+                  کەشوهەوای بڵەسەن
+                </Text>
+
+                <Text
+                  style={
+                    styles.weatherCardSubtitle
+                  }
+                >
+                  زانیاری بەردەست نییە
+                </Text>
+
+              </View>
+
+              <Ionicons
+                name="chevron-back"
+                size={20}
+                color="#9ca3af"
+              />
+
+            </View>
+
+          ) : (
+
+            <>
+
+              {/* Main Compact Weather */}
+
+              <View
+                style={styles.weatherCompactMain}
+              >
+
+                <View
+                  style={
+                    styles.weatherCompactLeft
+                  }
+                >
+
+                  <Text
+                    style={
+                      styles.weatherCompactTemp
+                    }
+                  >
+                    {Math.round(
+                      todayWeather.current.temperature_2m
+                    )}
+                    °
+                  </Text>
+
+                  <View
+                    style={
+                      styles.weatherCompactText
+                    }
+                  >
+
+                    <Text
+                      style={
+                        styles.weatherCompactTitle
+                      }
+                    >
+                      کەشوهەوای ئەمڕۆ
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.weatherCompactDesc
+                      }
+                    >
+                      {getWeatherDescription(
+                        todayWeather.current.weather_code
+                      )}
+                    </Text>
+
+                  </View>
+
+                </View>
+
+
+                <View
+                  style={
+                    styles.weatherCompactRight
+                  }
+                >
+
+                  <View
+                    style={
+                      styles.weatherSmallIcon
+                    }
+                  >
+
+                    <MaterialCommunityIcons
+                      name={getWeatherIcon(
+                        todayWeather.current.weather_code
+                      )}
+                      size={37}
+                      color="#f59e0b"
+                    />
+
+                  </View>
+
+                  <View
+                    style={
+                      styles.weatherLocationSmall
+                    }
+                  >
+
+                    <Ionicons
+                      name="location-outline"
+                      size={14}
+                      color="#f59e0b"
+                    />
+
+                    <Text
+                      style={
+                        styles.weatherLocation
+                      }
+                    >
+                      بڵەسەن
+                    </Text>
+
+                  </View>
+
+                </View>
+
+              </View>
+
+
+              {/* Small Details */}
+
+              <View
+                style={
+                  styles.weatherDetailsCompact
+                }
+              >
+
+                <View
+                  style={
+                    styles.weatherDetailCompactItem
+                  }
+                >
+
+                  <Text
+                    style={
+                      styles.weatherDetailCompactValue
+                    }
+                  >
+                    {todayWeather.current.relative_humidity_2m}٪
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.weatherDetailCompactLabel
+                    }
+                  >
+                    ڕطوبەت
+                  </Text>
+
+                </View>
+
+
+                <View
+                  style={
+                    styles.weatherDetailCompactItem
+                  }
+                >
+
+                  <Text
+                    style={
+                      styles.weatherDetailCompactValue
+                    }
+                  >
+                    {Math.round(
+                      todayWeather.current.wind_speed_10m
+                    )}
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.weatherDetailCompactLabel
+                    }
+                  >
+                    km/h
+                  </Text>
+
+                </View>
+
+
+                <View
+                  style={
+                    styles.weatherDetailCompactItem
+                  }
+                >
+
+                  <Text
+                    style={[
+                      styles.weatherDetailCompactValue,
+                      {
+                        color: "#ef4444",
+                      },
+                    ]}
+                  >
+                    {Math.round(
+                      todayWeather.daily.temperature_2m_max[0]
+                    )}
+                    °
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.weatherDetailCompactLabel
+                    }
+                  >
+                    زۆرترین
+                  </Text>
+
+                </View>
+
+
+                <View
+                  style={
+                    styles.weatherDetailCompactItem
+                  }
+                >
+
+                  <Text
+                    style={[
+                      styles.weatherDetailCompactValue,
+                      {
+                        color: "#38bdf8",
+                      },
+                    ]}
+                  >
+                    {Math.round(
+                      todayWeather.daily.temperature_2m_min[0]
+                    )}
+                    °
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.weatherDetailCompactLabel
+                    }
+                  >
+                    کەمترین
+                  </Text>
+
+                </View>
+
+
+                <Ionicons
+                  name="chevron-back"
+                  size={17}
+                  color="#f59e0b"
+                  style={{
+                    marginRight: 2,
+                  }}
+                />
+
+              </View>
+
+            </>
+          )}
+
         </TouchableOpacity>
+
       </ScrollView>
+
     </SafeAreaView>
   );
 }
+
 
 // =====================================================
 // Styles
 // =====================================================
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: "#0b1329",
   },
 
-  // =====================================================
+
+  // ===================================================
   // Header
-  // =====================================================
+  // ===================================================
 
   header: {
     flexDirection: "row",
@@ -573,62 +1113,28 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
 
-  profileBtn: {
-    borderWidth: 1.5,
-    borderColor: "#f59e0b",
-    borderRadius: 20,
-    padding: 2,
-  },
-
-  profileImg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  headerSpacer: {
+    width: 70,
   },
 
   headerTitle: {
     color: "#fff",
     fontSize: 20,
     fontWeight: "bold",
+    textAlign: "center",
+    flex: 1,
   },
 
   headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-
-  notificationBtn: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#172554",
-    borderRadius: 12,
-    position: "relative",
+    width: 70,
+    alignItems: "flex-end",
     justifyContent: "center",
-    alignItems: "center",
   },
 
-  badge: {
-    position: "absolute",
-    top: 2,
-    right: 2,
-    backgroundColor: "#f59e0b",
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
 
-  badgeText: {
-    color: "#000",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-
-  // =====================================================
+  // ===================================================
   // Quick News
-  // =====================================================
+  // ===================================================
 
   alertCard: {
     marginHorizontal: 16,
@@ -662,6 +1168,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "right",
     lineHeight: 20,
+    color: "#9ca3af",
   },
 
   alertFooterRow: {
@@ -681,9 +1188,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // =====================================================
+
+  // ===================================================
   // Quick Access
-  // =====================================================
+  // ===================================================
 
   quickAccessRow: {
     flexDirection: "row",
@@ -714,9 +1222,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // =====================================================
-  // Weather Card
-  // =====================================================
+
+  // ===================================================
+  // Compact Weather Card
+  // ===================================================
 
   weatherCard: {
     marginHorizontal: 16,
@@ -726,46 +1235,140 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#1e3a8a",
-    minHeight: 92,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+
+    // Compact size similar to AdBanner
+    minHeight: 122,
+
+    overflow: "hidden",
+  },
+
+  weatherCompactMain: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    padding: 14,
+    justifyContent: "space-between",
   },
 
-  weatherIconBox: {
-    width: 62,
-    height: 62,
-    borderRadius: 14,
-    backgroundColor: "#0f1b3a",
-    justifyContent: "center",
+  weatherCompactLeft: {
+    flexDirection: "row-reverse",
     alignItems: "center",
-    marginLeft: 12,
-  },
-
-  weatherContent: {
     flex: 1,
-    alignItems: "flex-end",
   },
 
-  weatherTitle: {
+  weatherCompactTemp: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 34,
+    fontWeight: "bold",
+    lineHeight: 38,
+  },
+
+  weatherCompactText: {
+    alignItems: "flex-end",
+    marginRight: 8,
+  },
+
+  weatherCompactTitle: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "bold",
+  },
+
+  weatherCompactDesc: {
+    color: "#f59e0b",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 3,
+  },
+
+  weatherCompactRight: {
+    alignItems: "flex-end",
+    marginLeft: 8,
+  },
+
+  weatherSmallIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 15,
+    backgroundColor: "#0b1329",
+    borderWidth: 1,
+    borderColor: "#1e3a8a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  weatherLocationSmall: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
+    gap: 3,
+  },
+
+  weatherLocation: {
+    color: "#dbe3ec",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+
+  weatherDetailsCompact: {
+    marginTop: 9,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#1e3a8a",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  weatherDetailCompactItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+
+  weatherDetailCompactValue: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+
+  weatherDetailCompactLabel: {
+    color: "#8b98aa",
+    fontSize: 8,
+    marginTop: 2,
+  },
+
+  weatherLoading: {
+    minHeight: 98,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row-reverse",
+    gap: 10,
+  },
+
+  weatherLoadingText: {
+    color: "#9ca3af",
+    fontSize: 11,
+  },
+
+  weatherError: {
+    minHeight: 98,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  weatherCardTitle: {
+    color: "#fff",
+    fontSize: 14,
     fontWeight: "bold",
     textAlign: "right",
   },
 
-  weatherSubtitle: {
-    color: "#94a3b8",
+  weatherCardSubtitle: {
+    color: "#9ca3af",
     fontSize: 10,
     marginTop: 4,
     textAlign: "right",
   },
 
-  weatherMore: {
-    color: "#f59e0b",
-    fontSize: 10,
-    marginTop: 7,
-    textAlign: "right",
-  },
 });
-
