@@ -52,6 +52,7 @@ jobs:
         run: |
           npx eas-cli@24.8.0 build:download \
             --build-id "${{ steps.eas-build.outputs.build_id }}" \
+            --path ./blesanapp.apk \
             --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -60,6 +61,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blesanapp-android-apk
-          path: "*.apk"
+          path: "blesanapp.apk"
           if-no-files-found: error
 
