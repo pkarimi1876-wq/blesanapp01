@@ -48,12 +48,23 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
+     
       - name: Download APK
         run: |
           npx eas-cli@24.8.0 build:download \
             --build-id "${{ steps.eas-build.outputs.build_id }}" \
-            --path ./blesanapp.apk \
             --non-interactive
+
+          APK_FILE=$(find /tmp/runner/eas-cli-nodejs/eas-build-run-cache -name "*.apk" -type f | head -1)
+
+          if [ -z "$APK_FILE" ]; then
+            echo "APK file not found"
+            exit 1
+          fi
+
+          echo "APK found: $APK_FILE"
+          cp "$APK_FILE" ./blesanapp.apk
+
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
