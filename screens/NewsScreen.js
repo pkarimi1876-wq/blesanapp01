@@ -12,7 +12,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
   Modal,
@@ -22,6 +21,7 @@ import {
   Alert,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Newspaper,
   ArrowRight,
@@ -882,49 +882,6 @@ export default function NewsScreen({
                       }
                     >
                       <TouchableOpacity
-                        style={[
-                          styles.socialButton,
-                          item.has_liked &&
-                            styles.likedButton,
-                        ]}
-                        onPress={() =>
-                          handleToggleLike(
-                            item
-                          )
-                        }
-                        activeOpacity={
-                          0.8
-                        }
-                      >
-                        <Heart
-                          size={17}
-                          color={
-                            item.has_liked
-                              ? "#EF4444"
-                              : COLORS.textSub
-                          }
-                          fill={
-                            item.has_liked
-                              ? "#EF4444"
-                              : "transparent"
-                          }
-                        />
-
-                        <Text
-                          style={[
-                            styles.socialText,
-                            item.has_liked &&
-                              styles.likedText,
-                          ]}
-                        >
-                          {
-                            item.likes_count ||
-                            0
-                          }
-                        </Text>
-                      </TouchableOpacity>
-
-                     <TouchableOpacity
   style={styles.socialButton}
   onPress={() => openComments(item)}
   activeOpacity={0.8}
@@ -938,7 +895,8 @@ export default function NewsScreen({
     {item.comments_count || 0}
   </Text>
 </TouchableOpacity>
-                      )}
+                     
+                      
 
                       <View
                         style={

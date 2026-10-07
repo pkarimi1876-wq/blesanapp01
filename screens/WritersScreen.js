@@ -1,11 +1,12 @@
 import React from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowRight, ShieldCheck, Clock3 } from "lucide-react-native";
 
 export default function ManageWritersScreen({ navigation }) {

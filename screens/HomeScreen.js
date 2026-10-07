@@ -6,10 +6,11 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   Ionicons,
@@ -22,8 +23,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import AdBanner from "../Components/AdBanner";
 import AdminAccessButton from "../Components/AdminAccesButton.js";
 import { supabase } from "../lib/supabase";
-
-
 // =====================================================
 // Home Screen
 // =====================================================

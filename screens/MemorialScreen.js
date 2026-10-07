@@ -12,7 +12,6 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  SafeAreaView,
   Modal,
   TextInput,
   Alert,
@@ -20,6 +19,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   Plus,

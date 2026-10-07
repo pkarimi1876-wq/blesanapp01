@@ -1,37 +1,50 @@
 {
   "expo": {
-    "name": "appbllesan01",
+    "name": "بڵەسەن",
     "slug": "snack-17440784-6773-4d92-af4c-c29dc0b37cf3",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true
     },
+
     "android": {
-       "package": "com.blesanapp.app",
+      "package": "com.blesanapp.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "description": "ئەپی فەرمی  بڵەسەن",
+
+    "description": "ئەپی فەرمی بڵەسەن",
+
     "extra": {
       "eas": {
         "projectId": "8dc4cb96-c4f0-4397-b52a-5ab9e4282f44"
       }
     },
-    "owner": "appblesan"
+
+    "owner": "appblesan",
+
+    "plugins": [
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-font"
+    ]
   }
 }
