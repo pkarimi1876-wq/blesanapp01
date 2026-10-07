@@ -25,6 +25,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "description": "ئەپی فەرمی  بڵەسەن"
+    "description": "ئەپی فەرمی  بڵەسەن",
+    "extra": {
+      "eas": {
+        "projectId": "8dc4cb96-c4f0-4397-b52a-5ab9e4282f44"
+      }
+    },
+    "owner": "appblesan"
   }
 }
