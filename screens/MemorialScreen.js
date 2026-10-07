@@ -3508,11 +3508,8 @@ const styles =
         "#2A3B50",
     },
 
-    editCommentCancelText: {
-      color:
-        "#A0AEC0",
-      fontWeight:
-        "bold",
-    },
-
-  });
+     editCommentCancelText: {
+    color: "#A0AEC0",
+    fontWeight: "bold",
+  },
+});

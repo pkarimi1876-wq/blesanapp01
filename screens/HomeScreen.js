@@ -1363,12 +1363,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "right",
   },
-
   weatherCardSubtitle: {
     color: "#9ca3af",
     fontSize: 10,
     marginTop: 4,
     textAlign: "right",
   },
-
 });

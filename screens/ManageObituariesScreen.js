@@ -1471,7 +1471,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  actionText: {
+   actionText: {
     color: "#fff",
     fontSize: 13,
     fontWeight: "700",
