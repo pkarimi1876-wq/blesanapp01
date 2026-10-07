@@ -31,12 +31,28 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build Android app with EAS
-        run: npx eas-cli@24.8.0 build --platform android --profile preview --non-interactive --wait
+        id: eas-build
+        run: |
+          BUILD_OUTPUT=$(npx eas-cli@24.8.0 build --platform android --profile preview --non-interactive --wait)
+          echo "$BUILD_OUTPUT"
+
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oE '[a-f0-9]{8}-[a-f0-9-]{27,}' | tail -1)
+
+          if [ -z "$BUILD_ID" ]; then
+            echo "Could not find EAS Build ID"
+            exit 1
+          fi
+
+          echo "BUILD_ID=$BUILD_ID"
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Download APK
-        run: npx eas-cli@24.8.0 build:download --platform android --non-interactive
+        run: |
+          npx eas-cli@24.8.0 build:download \
+            --build-id "${{ steps.eas-build.outputs.build_id }}" \
+            --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
